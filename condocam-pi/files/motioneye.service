@@ -1,0 +1,9 @@
+[Unit]
+Description=motioneye server
+
+[Service]
+ExecStart=/usr/local/bin/meyectl startserver -c /etc/condocam/motioneye.conf
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target
