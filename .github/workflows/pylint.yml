@@ -19,6 +19,8 @@ jobs:
         pip install pylint
     - name: Analysing the code with pylint
       run: |
+        pwd
+        ls
         pylint --rcfile pylintrc --fail-under=10 `find -regextype egrep -regex '(.*.py)$'`
         | tee pylint.txt
     - name: Upload pylint.txt as artifact
