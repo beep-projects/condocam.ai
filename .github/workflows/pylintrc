@@ -4,6 +4,9 @@
 #
 # Its canonical open-source location is:
 #   https://google.github.io/styleguide/pylintrc
+#
+# changes made:
+# max-line-length=100, was 80
 
 [MASTER]
 
@@ -265,7 +268,7 @@ generated-members=
 [FORMAT]
 
 # Maximum number of characters on a single line.
-max-line-length=80
+max-line-length=100
 
 # TODO(https://github.com/PyCQA/pylint/issues/3352): Direct pylint to exempt
 # lines made too long by directives to pytype.
