@@ -34,13 +34,13 @@ class ImageDirectoryWatcher:  # pylint: disable=too-few-public-methods
 
   Attributes:
   dirToWatch: Path to the image directory that should be watched
-  imageQueue: queue used for communication of created jpeg files to processImage
+  imagequeue: queue used for communication of created jpeg files to processImage
   """
 
-  def __init__(self, dirToWatch, imageQueue):
+  def __init__(self, dirToWatch, imagequeue):
     """Inits the watchdog."""
     self._dir_to_watch = dirToWatch
-    self._image_queue = imageQueue
+    self._image_queue = imagequeue
     self.observer = Observer()
 
   def run(self):
@@ -62,14 +62,14 @@ class JPEGHandler(FileSystemEventHandler):
   """Class for putting newly created jpegs into a managed queue
   for further processing by other functions."""
 
-  def __init__(self, imageQueue):
+  def __init__(self, imagequeue):
     """Inits the JPEGHandler.
 
     Attributes:
-      imageQueue: queue used for passing newly created jpeg files
+      imagequeue: queue used for passing newly created jpeg files
                   to processImage for further processing
     """
-    self._image_queue = imageQueue
+    self._image_queue = imagequeue
 
   def on_created(self, event):
     """function for handling file creation events.
