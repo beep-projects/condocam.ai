@@ -4,7 +4,7 @@
 
 # condocam.ai
 
-condocam.ai converts a Raspberry Pi + webcams into a smart surveillance camera with people detection and automated alerts via Telegram. The usage of people detection prevents false alarms caused by cats, dogs, light changes, etc. .
+condocam.ai converts a Raspberry Pi + webcams into a **smart surveillance camera* with **people detection** and **automated alerts via Telegram**. The usage of people detection prevents false alarms caused by cats, dogs, light changes, etc. . (If you want, you can also make it detect cats)
 
 This project is based on the work from following other projects:
 
