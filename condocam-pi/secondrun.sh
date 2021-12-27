@@ -34,12 +34,10 @@ function waitForApt() {
   done
 }
 
-
 # redirect output to 'secondrun.log':
 exec 3>&1 4>&2
 trap 'exec 2>&4 1>&3' 0 1 2 3
 exec 1>/boot/secondrun.log 2>&1
-
 
 echo "START secondrun.sh"
 #the following variables should be set by firstrun.sh

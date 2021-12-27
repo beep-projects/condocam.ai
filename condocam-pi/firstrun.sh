@@ -98,15 +98,15 @@ dpkg-reconfigure -f noninteractive keyboard-configuration
 
 if $ENABLE_ENC28J60; then
   echo "enable enc28j60 overlay"
-  LINE='dtoverlay=enc28j60'
-  FILE='/boot/config.txt'
-  grep -qxF -- "$LINE" "$FILE" || echo "$LINE" >> "$FILE"
+  LINE="dtoverlay=enc28j60"
+  FILE="/boot/config.txt"
+  grep -qxF -- "${LINE}" "${FILE}" || echo "${LINE}" >> "${FILE}"
 fi
 
 #clean up
 echo "removing firstrun.sh from the system"
 rm -f /boot/firstrun.sh
-sed -i 's| systemd.run.*||g' /boot/cmdline.txt
+sed -i "s| systemd.run.*||g" /boot/cmdline.txt
 
 echo "installing secondrun.service"
 # make sure secondrun.sh is executed at next boot. 
