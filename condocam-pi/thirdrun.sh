@@ -37,6 +37,6 @@ systemctl reset-failed
 sed -i 's| systemd.run.*||g' /boot/cmdline.txt
 
 echo "DONE thirdrun.sh"
-telegram --success --text "Installation of motioneyepi complete. Have fun!"
+telegram --success --text "Installation of condocam.ai complete. Have fun!"
 
 exit 0
