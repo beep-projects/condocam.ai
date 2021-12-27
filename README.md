@@ -243,7 +243,7 @@ For Linux I provide a script that downloads Raspberry Pi OS and flashes it onto 
 
 6. Make sure that the `boot`-partition of the Micro SD card is accessible via file explorer
 
-7. Open cmdline.txt from the Micro SD card and copy the root=PARTUUID=-Number over into the cmdline.txt in the SystaPi_files subfolder. If you do not do this step, your pi will not boot!
+7. Open `cmdline.txt` from the Micro SD card and copy the `root=PARTUUID=`-Number over into the `cmdline.txt` in the `SystaPi_files` subfolder. If you do not do this step, your pi will not boot!
 
 8. Copy all files and folders from the `condocam-pi` subfolder to `boot`-partition of the Micro SD card
 
@@ -260,7 +260,7 @@ For Linux I provide a script that downloads Raspberry Pi OS and flashes it onto 
     tail -f /boot/secondrun.log
     ```
 
-    The password for the ```pi``` user is not changed from the default, so you should change it or even create a new user, e.g. the user ```beep``` and remove the user ```pi``` including his home folder
+    The password for the `pi` user is not changed from the default, so you should change it or even create a new user, e.g. the user `beep` and remove the user `pi` including his home folder
 
     ```
     sudo useradd -m beep -G sudo
@@ -280,11 +280,11 @@ For Linux I provide a script that downloads Raspberry Pi OS and flashes it onto 
     - The cameras are preconfigured, but there so many different camera models out there so that you should adjust the default configuration to match your setup
     - If you selected to install RaspAP, check [RaspAP Basic Settings](https://docs.raspap.com/ap-basics/)
     
-13. Send ```/setcommands``` to your bot, in order to update the bots commands in the telegram chat menu
+13. Send `/setcommands` to your bot, in order to update the bots commands in the telegram chat menu
 
 ## <a name="bot-commands" />Bot commands
 
-The script ```condocambot.sh``` is used for communication between you and your bot. During installation the following commands are registered at @BotFather
+The script `condocambot.sh` is used for communication between you and your bot. During installation the following commands are registered at @BotFather
 
 ```
 /help - show commands list
