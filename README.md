@@ -1,8 +1,10 @@
 <img src="doc/ressources/condocam.ai_banner.png" alt="condocam.ai_logo" />
 
+[![GitHub license](https://img.shields.io/github/license/beep-projects/condocam.ai)](https://github.com/beep-projects/condocam.ai/blob/main/LICENSE) [![shellcheck](https://github.com/beep-projects/condocam.ai/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/beep-projects/condocam.ai/actions/workflows/shellcheck.yml) [![Pylint](https://github.com/beep-projects/condocam.ai/actions/workflows/pylint.yml/badge.svg)](https://github.com/beep-projects/condocam.ai/actions/workflows/pylint.yml) [![GitHub issues](https://img.shields.io/github/issues/beep-projects/condocam.ai)](https://github.com/beep-projects/SystaPi/issues) [![GitHub forks](https://img.shields.io/github/forks/beep-projects/condocam.ai)](https://github.com/beep-projects/condocam.ai/network) [![GitHub stars](https://img.shields.io/github/stars/beep-projects/condocam.ai)](https://github.com/beep-projects/condocam.ai/stargazers) ![GitHub repo size](https://img.shields.io/github/repo-size/beep-projects/condocam.ai)
+
 # condocam.ai
 
-condocam.ai converts a Raspberry Pi + webcams into a smart surveillance camera with people detection and automated alerts via Telegram. The usage of people detection prevents false alarms caused by cats, dogs, light changes, etc. .
+condocam.ai converts a Raspberry Pi + webcams into a **smart surveillance camera** with **people detection** and **automated alerts via Telegram**. The usage of people detection prevents false alarms caused by cats, dogs, light changes, etc. . (If you want, you can also make it detect cats)
 
 This project is based on the work from following other projects:
 
