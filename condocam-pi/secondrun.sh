@@ -62,6 +62,8 @@ CONDOCAM_IMAGE_FOLDER=/var/log/condocam/images
 CONDOCAMBOT_CONF="${CONDOCAM_FOLDER}/condocambot.conf"
 PROTOTXT="MobileNetSSD_deploy.prototxt.txt"
 CAFFEEMODEL="MobileNetSSD_deploy.caffemodel"
+#check the arch, as armv6l systems are not properly supported
+ARCH=$(arch)
 
 echo "create required directories"
 echo "mkdir -p ${CONDOCAM_FOLDER}"
@@ -103,6 +105,11 @@ sudo sed -i "s/api-key=.*/api-key=${BOT_TOKEN}/" "${TELEGRAM_CONF}"
 sudo sed -i "s/user-id=.*/user-id=${CHAT_ID}/" "${TELEGRAM_CONF}"
 telegram --success --text "telegram bot is installed successfully, continuing to install the rest of the system."
 
+if [[ "${ARCH}" == "armv6l" ]]; then
+	telegram --warning --text "You are trying to run **condocam.ai** on an **armv6l** based system, which is **not** properly supported.\n
+	Installation will continue, but **people detection** will not be enabled, because **OpenCV** has no packages available for this system and you might experience problems with **Motion** itself.\n
+	If you know how to fix these issue, please contribute to the project."
+fi
 
 #first we want to update the system and install packaged
 echo "updating the system"
@@ -133,10 +140,38 @@ telegram --success --text "system is apt updated, next step is to install motion
 
 #install motion and all dependencies
 echo "installing motion and all dependencies"
-sudo apt install -y motion
+if [[ "${ARCH}" == "armv6l" ]]; then
+	#there is no motion package in bullseye build for amrv6l at the moment, so we have to use the old one from buster
+	wget https://github.com/Motion-Project/motion/releases/download/release-4.4.0/pi_buster_motion_4.4.0-1_armhf.deb
+	sudo apt install -y ./pi_buster_motion_4.4.0-1_armhf.deb
+else
+	wget https://github.com/Motion-Project/motion/releases/download/release-4.4.0/bullseye_motion_4.4.0-1_armhf.deb
+	sudo apt install -y ./bullseye_motion_4.4.0-1_armhf.deb
+fi
+
+#motion did not create the log folder and then complained about missing permissions
+#create the folder if it does not exist
+motionLogDir="/var/log/motion"
+if [[ ! -e ${motionLogDir} ]]; then
+    sudo mkdir -p ${motionLogDir}
+    #motion user should be in group motion
+    sudo chown root:motion ${motionLogDir}
+    #make read and writable for user and group, others read only
+    sudo chmod 664 ${motionLogDir}
+fi
 
 echo "installing motioneye dependencies"
-sudo apt install -y python-pip python-dev libssl-dev libcurl4-openssl-dev libjpeg-dev libz-dev python-pil
+sudo apt install -y libssl-dev libcurl4-openssl-dev libjpeg-dev libz-dev
+#sudo apt install -y python-pip python-dev libssl-dev libcurl4-openssl-dev libjpeg-dev libz-dev python-pil
+#this part is getting ugly because motioneye requires the deprecated python2.7
+#be sure to use python2.7 and make python link to python2
+sudo apt install -y python-is-python2 python-dev-is-python2
+#get pip for python 2.7 which is no longer in the Raspberry Pi OS repositories
+wget https://bootstrap.pypa.io/pip/2.7/get-pip.py
+#install pip
+sudo python get-pip.py
+#install pillow, which is also no longer available in the Raspberry Pi OS repositories
+sudo pip install pillow
 
 echo "installing motioneye"
 sudo pip install motioneye
@@ -167,11 +202,16 @@ do
 	sudo sed -i "s/@id .*/@id ${CAMID}/" /boot/files/template-camera.conf
 	#set motion detection threshold to 1% of all pixels
 	THRESH=$(echo "(${WIDTH}*${HEIGHT}*0.01)/1" | bc)
+	#set motion detection max_threshold to 10% of all pixels
+	MAX_THRESH=$(echo "(${WIDTH}*${HEIGHT}*0.1)/1" | bc)
+	#correct values if WIDTH or HEIGHT is > 1000px
+	if [[ ${WIDTH} -gt 1000 ]] || [[ ${HEIGHT} -gt 1000 ]] ; then
+		THRESH=$(echo "(${WIDTH}*${HEIGHT}*0.003)/1" | bc)
+		MAX_THRESH=$(echo "(${WIDTH}*${HEIGHT}*0.03)/1" | bc)
+	fi
 	#threshold $THRESH
 	sudo sed -i "s/threshold .*/threshold ${THRESH}/" /boot/files/template-camera.conf
-	#set motion detection max_threshold to 2.5% of all pixels
-	MAX_THRESH=$(echo "(${WIDTH}*${HEIGHT}*0.025)/1" | bc)
-	#threshold_maximum $THRESH
+	#threshold_maximum $MAX_THRESH
 	sudo sed -i "s/threshold_maximum .*/threshold_maximum ${MAX_THRESH}/" /boot/files/template-camera.conf
 	#snapshot_filename Cam${CAMID}_%Y-%m-%d-%H-%M-%S
 	sudo sed -i "s/snapshot_filename .*/snapshot_filename Cam${CAMID}_\%Y-\%m-\%d-\%H-\%M-\%S/" /boot/files/template-camera.conf
@@ -214,21 +254,29 @@ sudo cp /boot/files/motioneye.conf "${CONDOCAM_FOLDER}/motioneye.conf"
 #echo "rm /boot/files/template-camera.conf"
 #sudo rm /boot/files/template-camera.conf
 
-telegram --success --text "motion and motionEye are now installed, next one up is OpenCV and its dependencies for people detection"
-
-echo "install python stuff and dependecies for people recognition with opencv"
-waitForApt
-sudo apt install -y libatlas-base-dev python3-pip openexr libgtk-3-dev
-#numpy only supports python3
-#make sure to use -U because numpy is already installed but needs an update
-sudo pip3 install -U numpy opencv-utils opencv-python imutils watchdog filetype
+if [[ "${ARCH}" == "armv6l" ]]; then
+	telegram --success --text "motion and motionEye are now installed, skipping now OpenCV, which is not supported by your system.
+	Without this, people detection will not work."
+else
+	telegram --success --text "motion and motionEye are now installed, next one up is OpenCV and its dependencies for enabling people detection"
+	echo "install python3 dependecies for people detection with OpenCV"
+	waitForApt
+	sudo apt install -y libatlas-base-dev python3-pip openexr libgtk-3-dev
+	#numpy only supports python3
+	#make sure to use -U because numpy is already installed on Raspberry Pi OS but needs an update
+	sudo pip3 install -U numpy opencv-utils opencv-python imutils watchdog filetype
+fi
 
 echo "Install motioneye.service to run at startup and start the motioneye server:"
 ExecStart="/usr/local/bin/meyectl startserver -c \"${CONDOCAM_FOLDER}/motioneye.conf\""
 sudo sed -i "s/ExecStart=.*/ExecStart=${ExecStart//\//\\/}/" /boot/files/motioneye.service
 sudo cp /boot/files/motioneye.service "${SERVICE_FOLDER}/motioneye.service"
 
-echo "Install condocam_detection.service to run at startup:"
+if [[ "${ARCH}" == "armv6l" ]]; then
+	echo "Install condocam_detection.service, but not enable it to run at startup:"
+else
+	echo "Install condocam_detection.service to run at startup:"
+fi
 ExecStart="python3 \"${CONDOCAM_FOLDER}/condocam_image_watchdog.py\" -p \"$CONDOCAM_IMAGE_FOLDER\""
 sudo sed -i "s/ExecStart=.*/ExecStart=${ExecStart//\//\\/}/" /boot/files/condocam_detection.service
 sudo sed -i "s/_PROTOTXT=.*/_PROTOTXT=\"${PROTOTXT//\//\\/}\"/" /boot/files/condocam_image_watchdog.py
@@ -255,8 +303,11 @@ sudo systemctl enable condocambot.service
 #sudo systemctl start condocambot.service
 sudo systemctl enable motioneye.service
 #sudo systemctl start motioneye.service
-sudo systemctl enable condocam_detection.service
-#sudo systemctl start condocam_detection.service
+if [[ "${ARCH}" != "armv6l" ]]; then
+	sudo systemctl enable condocam_detection.service
+	#sudo systemctl start condocam_detection.service
+fi
+
 
 if $ENABLE_RASPAP; then
   #install raspap
@@ -264,7 +315,7 @@ if $ENABLE_RASPAP; then
   curl -sL https://install.raspap.com | bash -s -- --yes
 fi
 
-telegram --success --text "All packages are installed now, I am just doing some clean up and then I will be available for you."
+telegram --success --text "All packages are installed now, I am just doing some clean up and then I will be available for you at http://${HOSTNAME}:8765"
 
 echo "remove autoinstalled packages" 
 waitForApt

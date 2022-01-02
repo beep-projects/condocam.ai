@@ -36,7 +36,6 @@ import sys
 import multiprocessing
 import subprocess
 
-
 class ImageDirectoryWatcher:  # pylint: disable=too-few-public-methods
   """Watchdog for a specified image directory.
 
@@ -90,11 +89,13 @@ class JPEGHandler(FileSystemEventHandler):
     """
     if event.is_directory:
       return
-    # If a file is created check if it is a jpeg image
+    # If a file is created check if it is a image file
     # for jpg images the check often fails, also
     # when using imghdr.what(). Therefor we rely on the file extension for these
-    if filetype.is_image(event.src_path) is not None or event.src_path.lower().endswith(
-        (".jpg", ".jpeg")):
+    # the lastsnap.jpg files will be ignored, as they are requested by the user
+    # and should not be checked.
+    if (filetype.is_image(event.src_path) is not None or event.src_path.lower().endswith(
+      (".jpg", ".jpeg"))) and not event.src_path.lower().endswith("lastsnap.jpg"):
       # if it is an image, put it into the processing queue
       self._image_queue.put(event.src_path)
 
@@ -120,20 +121,27 @@ def process_image(image_queue, confidence):
       "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa",
       "train", "tvmonitor"
   ]
-  # load our serialized model from disk
+  # load the serialized model from disk
   net = cv2.dnn.readNetFromCaffe(prototxt, caffeemodel)
   while True:
-    #check if there is an image in the queue and process it
+    # check if there is an image in the queue and process it
     try:
       image_path = image_queue.get()
     except queue.Empty:
-      time.sleep(1)  #wait a while and continue with the next iteration
+      # if queue is empty, wait a while before the next iteration is done
+      time.sleep(1)
       continue
+    # if the image is not fully written, cv2.imread() returnes None, 
+    # so give the system some time to finish
+    time.sleep(0.1)  
     # load the input image and construct an input blob for the image
     # by resizing to fit the blob_size and then normalizing it
     # (note: normalization is done via the authors of the MobileNet SSD
     # implementation)
     image = cv2.imread(image_path)
+    if image is None:
+      # if the image could not be read, continue with next iteration
+      continue 
     image2 = None
     if image.shape[0] > image.shape[1]:
       image2 = imutils.resize(image, height=min(blob_size, image.shape[0]))
@@ -148,7 +156,6 @@ def process_image(image_queue, confidence):
     for i in numpy.arange(0, detections.shape[2]):
       # extract the confidence (i.e., the probability) associated with the prediction
       prediction_confidence = detections[0, 0, i, 2]
-
       # filter out weak detections by ensuring the
       # "prediction_confidence" is greater than the minimum confidence
       if prediction_confidence > confidence:
@@ -160,9 +167,7 @@ def process_image(image_queue, confidence):
           break
 
     if person_detected:
-      #print("person detected in ", image_path)
       subprocess.run(["telegram", "--quiet", "--photo", image_path], check=False)
-
 
 def main():
   """main function, starts the image directory watchdog, the image processing process pool
@@ -178,14 +183,14 @@ def main():
       default=0.5,
       help="minimum probability for people detection, to filter weak detections")
   args = vars(ap.parse_args())
-  image_directory = args[
-      "path"]  #base path, the watcher will go recursively into the subdirectories
+  # base path, the watcher will go recursively into the subdirectories
+  image_directory = args["path"]
   confidence = args["confidence"]
-  #create the queue for communication between file watchdog and processing processes
-  image_queue = multiprocessing.Manager().Queue(
-  )  #we need a Manager().Queue() for synchronized sharing between processes
-  #create and start the file watchdog
+  # create the queue for communication between file watchdog and processing processes
+  # we need a Manager().Queue() for synchronized sharing between processes
+  image_queue = multiprocessing.Manager().Queue()
   image_directory_watcher = ImageDirectoryWatcher(image_directory, image_queue)
+  # create and start the file watchdog
   watchdog = multiprocessing.Process(target=image_directory_watcher.run, args=[])
   watchdog.daemon = True
   watchdog.start()
@@ -200,7 +205,6 @@ def main():
     for _ in range(pool_size):
       arguments.append((image_queue, confidence))
     pool.starmap(process_image, arguments)
-
 
 #end of main()
 

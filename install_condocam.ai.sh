@@ -221,7 +221,7 @@ echo
 echo "the UUID of the root partition might have changed for the downloaded image. Updating the entry in cmdline.txt"
 PARTUUID=$( sudo blkid | grep rootfs | grep -oP '(?<=PARTUUID=\").*(?=\")' )
 echo "set PARTUUID=$PARTUUID for rootfs in cmdline.txt"
-sed -i "s/\(.*PARTUUID=\)[^ ]*\( .*\)/\1$PARTUUID\2/" cmdline.txt
+sed -i "s/\(.*PARTUUID=\)[^ ]*\( .*\)/\1$PARTUUID\2/" condocam-pi/cmdline.txt
 
 echo 
 echo "=============================================================="

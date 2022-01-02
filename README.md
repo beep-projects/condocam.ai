@@ -4,7 +4,7 @@
 
 # condocam.ai
 
-condocam.ai converts a Raspberry Pi + webcams into a **smart surveillance camera** with **people detection** and **automated alerts via Telegram**. The usage of people detection prevents false alarms caused by cats, dogs, light changes, etc. . (If you want, you can also make it detect cats)
+**condocam.ai** converts a Raspberry Pi with webcams into a **smart surveillance camera** with **people detection** and **automated alerts via Telegram**. The usage of people detection prevents false alarms caused by cats, dogs, light changes, etc. . (If you want, you can also make it to detect cats)
 
 This project is based on the work from following other projects:
 
@@ -31,7 +31,7 @@ This project is based on the work from following other projects:
 
 ## <a name="project-requirements"/>Project Requirements
 
-The project is designed to run on any Raspberry Pi available. The people detection part requires the most CPU power, so if you use earlier models, you will experience a bigger lag for the alerts via telegram. The following describes the setup that I use with good results:
+The project will run on any **Raspberry Pi 2 or newer**. Actually it is designed to run on any Raspberry Pi, but unfortunately the support of OpenCV and Motion is limited for the ARMv6 architecture of older Raspberry Pis like Raspberry Pi Zero and Raspberry Pi 1 (see [Specifications](https://en.wikipedia.org/wiki/Raspberry_Pi#Specifications) for details). These models are not supported out of the box, but you can get the project running on these, if you compile `python-opencv` on your own. The people detection part requires the most CPU power and if you use earlier models, you will experience a bigger lag for the alerts via telegram. The following describes the setup that I use with good results:
 
 **Setup #1 "Surveillance Camera for my home"**
 This setup features three cameras that overlook the important areas that intruders might pass on their way into my home.

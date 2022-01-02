@@ -149,7 +149,7 @@ fi
 
 # convert \n to LF
 #DISPLAY_TEXT=$(echo "${DISPLAY_TEXT}" | sed 's:\\n:\n:g')
-DISPLAY_TEXT="${DISPLAY_TEXT\\n/$'\n'}"
+DISPLAY_TEXT="${DISPLAY_TEXT//'\n'/$'\n'}"
 
 # if icon defined, include ahead of notification
 [ "${DISPLAY_ICON}" != "" ] && NOTIFY_TEXT="${DISPLAY_ICON} "

@@ -115,7 +115,7 @@ fi
 
 #clean up
 echo "removing firstrun.sh from the system"
-rm -f /boot/firstrun.sh
+#rm -f /boot/firstrun.sh
 sed -i "s| systemd.run.*||g" /boot/cmdline.txt
 
 echo "installing secondrun.service"

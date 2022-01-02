@@ -16,13 +16,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see https://www.gnu.org/licenses/
 
-#load variables stored in condocambot.conf
+# load variables stored in condocambot.conf
 CONF_FILE=/etc/condocam/condocambot.conf
-TIMEOUT=60 #long polling intervall = 10 minutes
-attackLimit=3 #how many unauthorized requests are allowed before the bot shuts down itself
+TIMEOUT=60 # long polling intervall = 10 minutes
+attackLimit=3 # how many unauthorized requests are allowed before the bot shuts down itself
 CONDOCAM_IMAGE_FOLDER=/var/log/condocam/images
 
-#some telegram icon codes for easy use
+# some telegram icon codes for easy use
 ICON_INFO=2139
 ICON_WARN=26A0
 
@@ -35,7 +35,7 @@ fi
 # shellcheck source=./condocambot.conf
 source "${CONF_FILE}"
 
-#check if all variables are present
+# check if all variables are present
 CONF_IS_COMPLETE=true
 variables=("${BOT_TOKEN}" "${LAST_UPDATE_ID}" "${CHAT_ID}" "${ADMIN_ID}" "${ADMIN_IS_BOT}" "${ADMIN_FIRST_NAME}" "${ADMIN_LANGUAGE_CODE}")
 for variable in "${variables[@]}"
@@ -46,14 +46,14 @@ do
   fi
 done
 case $CONF_IS_COMPLETE in
-  (false) exit 0;; #indicate no failure, so that the service does not get restarted
+  (false) exit 0;; # indicate no failure, so that the service does not get restarted
 esac
-#get the number of cameras (I assume it is at least 1)
+# get the number of cameras (I assume it is at least 1)
 numOfCams=$( <motion.conf grep -c "camera camera-.*\.conf" )
 nextUpdateId=$((LAST_UPDATE_ID+1))
 attackCount=0
 
-#everything is loaded, now define some functions
+# everything is loaded, now define some functions
 
 #######################################
 # Checks for known devices on the network
@@ -67,14 +67,14 @@ attackCount=0
 #   send messages via telegram about state changes
 #######################################
 function checkDevicePresence() {
-  #if no HOMIES are defines, we can exit immedeately
+  # if no HOMIES are defines, we can exit immedeately
   if [[ ! -v HOMIES[@] ]] || [ ${#HOMIES[@]} -eq 0 ]; then
     return 0
   fi
   declare -a peopleNames
   presenceDetected=false
-  #arp-scan for present devices
-  #arp-scan is pretty unreliable, so we have to do multiple scans
+  # arp-scan for present devices
+  # arp-scan is pretty unreliable, so we have to do multiple scans
   for i in {1..5}
   do
     readarray -t devices < <( sudo arp-scan -l | grep -o -E '([[:alnum:]]{1,2}:){5}[[:alnum:]]{1,2}' )
@@ -88,7 +88,7 @@ function checkDevicePresence() {
     done
   done
   echo "peopleNames: ${peopleNames[*]}"
-  #get motion detection (md) status
+  # get motion detection (md) status
   mdOn=false
   i=1
   while [[ $i -le numOfCams ]] ; do
@@ -122,7 +122,7 @@ function setMotionDetectionState () {
   case $targetState in
     on)
       i=1
-      #start motion for each camera
+      # start motion for each camera
       while [[ $i -le numOfCams ]] ; do
         curl -s "http://localhost:7999/${i}/detection/start" >/dev/null
         i=$((i+1))
@@ -131,7 +131,7 @@ function setMotionDetectionState () {
       ;;
     off)
       i=1
-      #pause motion for each camera
+      # pause motion for each camera
       while [[ $i -le numOfCams ]] ; do
         curl -s "http://localhost:7999/${i}/detection/pause" >/dev/null
         i=$((i+1))
@@ -144,31 +144,31 @@ function setMotionDetectionState () {
   esac
 }
 
-#start the bot loop for continuously checking for updates on the telegram channel
+# start the bot loop for continuously checking for updates on the telegram channel
 telegram --quiet --icon $ICON_INFO --text "Awaiting orders!"
 while :
 do
-  #check for present devices and toggle md
-  #TODO fix and activate this
+  # check for present devices and toggle md
+  # TODO fix and activate this
   #checkDevicePresence
-  #check if there is a new update on telegram
-  #TODO getUpdates is not supported by telegram, it should be added
+  # check if there is a new update on telegram
+  # TODO getUpdates is not supported by telegram, it should be added
   updateJSON=$( curl -s -X GET "https://api.telegram.org/bot$BOT_TOKEN/getUpdates?timeout=$TIMEOUT&offset=$nextUpdateId" )
   result=$( echo "${updateJSON}" | jq '.result' )
 
   if [ -n "${updateJSON}" ] && [ "${result}" != "[]" ]; then
-    #the bot received an update
-    #parse the received JSON data
+    # the bot received an update
+    # parse the received JSON data
     lastUpdateID=$( echo "${updateJSON}" | jq '.result | .[0].update_id' )
     adminID=$( echo "${updateJSON}" | jq '.result | .[0].message.from.id' )
     adminIsBot=$( echo "${updateJSON}" | jq '.result | .[0].message.from.is_bot' )
     adminFirstName=$( echo "${updateJSON}" | jq '.result | .[0].message.from.first_name' )
     adminLanguageCode=$( echo "${updateJSON}" | jq '.result | .[0].message.from.language_code' )
-    #no matter if this request was legitimate, the nextUpdateId has to be increased, for not receiving this update again
+    # no matter if this request was legitimate, the nextUpdateId has to be increased, for not receiving this update again
     nextUpdateId=$((lastUpdateID+1))
     sed -i "s/^LAST_UPDATE_ID=.*/LAST_UPDATE_ID=$lastUpdateID/" $CONF_FILE
     if [ "${adminID}" != "${ADMIN_ID}" ] || [ "${adminIsBot}" != "${ADMIN_IS_BOT}" ] || [ "${adminFirstName}" != "${ADMIN_FIRST_NAME}" ] || [ "${adminLanguageCode}" != "${ADMIN_LANGUAGE_CODE}" ]; then
-      #this is an authorized request. Process it.
+      # this is an authorized request. Process it.
       command=$( echo "${updateJSON}" | jq '.result | .[0].message.text' )
       command="${command%\"}" 
       command="${command#\"}"
@@ -207,9 +207,9 @@ do
           sudo systemctl restart motioneye.service
           ;;
         /status)
-          motioneyeStatus=$( systemctl status motioneye.service | grep "^   Active" )
-          condocambotStatus=$( systemctl status condocambot.service | grep "^   Active" )
-          condocamDetectionStatus=$( systemctl status condocam_detection.service | grep "^   Active" )
+          motioneyeStatus=$( systemctl status motioneye.service | grep "^[ ]*Active" )
+          condocambotStatus=$( systemctl status condocambot.service | grep "^[ ]*Active" )
+          condocamDetectionStatus=$( systemctl status condocam_detection.service | grep "^[ ]*Active" )
           i=1
           detectionStatus=""
           while [[ $i -le numOfCams ]] ; do
@@ -225,11 +225,11 @@ do
           # the sleeps in the following are a hack to work around the unpredictable link creation by motion
           while [[ $i -le numOfCams ]] ; do
             curl -s "http://localhost:7999/${i}/action/snapshot" >/dev/null
-            while [ ! -f "${CONDOCAM_IMAGE_FOLDER}/Camera${i}/lastsnap.jpg" ]; do sleep 1; done #give the system some time to respond
+            while [ ! -f "${CONDOCAM_IMAGE_FOLDER}/Camera${i}/lastsnap.jpg" ]; do sleep 1; done # give the system some time to respond
               telegram --quiet --photo "${CONDOCAM_IMAGE_FOLDER}/Camera${i}/lastsnap.jpg"
               i=$((i+1))
           done
-          sleep 2 #give the system some time to respond
+          sleep 2 # give the system some time to respond
           i=1
           # the handling of the lastsnap.jpg link is weird, so it is better to remove the link
           # in order to get a link to a new image the next time a snapshot is requested again
@@ -254,7 +254,7 @@ do
           setMotionDetectionState "${targetState}"
           ;;
         /setcommands)
-        #be carfull with the formatting of this. It took me a while to write the JSON in a format which gets accepted by @BotFather
+        # be carfull with the formatting of this. It took me a while to write the JSON in a format which gets accepted by @BotFather
           commandsList='{"commands": [
               {"command": "help", "description": "show commands list"},
               {"command": "ping", "description": "return pong"},
@@ -274,7 +274,7 @@ do
           curl -s "https://api.telegram.org/bot$BOT_TOKEN/setMyCommands" -H "Content-Type: application/json" -d "$commandsList" >/dev/null
           ;;
         /start)
-          #nothing to do, but it is a telegram bot default command, so I should catch it
+          # nothing to do, but it is a telegram bot default command, so I should catch it
           telegram --quiet --icon $ICON_INFO --text "Awaiting orders!"
           ;;
         *)
@@ -282,15 +282,15 @@ do
           ;;
       esac
     else
-      #unauthorized request
+      # unauthorized request
       attackCount=$((attackCount+1))
       if [ $attackCount -ge $attackLimit ]; then
         telegram --quiet --error --title "ALARM" --text "I am receiving unauthorized requests. I am shutting myself down."
         sleep 5
-        exit 0 #indicate no failure, so that the service does not get restarted
+        exit 0 # indicate no failure, so that the service does not get restarted
       fi
     fi
-  fi #else the getUpdate just timed out, start waiting again
+  fi # else the getUpdate just timed out, start waiting again
 done
-#we should not end up here
+# we should not end up here
 telegram --quiet --icon $ICON_WARN --text "I'm done for now! Service script exited."
