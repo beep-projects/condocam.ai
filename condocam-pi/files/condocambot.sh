@@ -17,8 +17,9 @@
 # along with this program.  If not, see https://www.gnu.org/licenses/
 
 # load variables stored in condocambot.conf
+# shellcheck disable=SC1091
 CONF_FILE=/etc/condocam/condocambot.conf
-TIMEOUT=60 # long polling intervall = 10 minutes
+TIMEOUT=60 # long polling intervall = 10 minutes, but get's currently ignored by the Telegram server
 attackLimit=3 # how many unauthorized requests are allowed before the bot shuts down itself
 CONDOCAM_IMAGE_FOLDER=/var/log/condocam/images
 
@@ -67,7 +68,7 @@ attackCount=0
 #   send messages via telegram about state changes
 #######################################
 function checkDevicePresence() {
-  # if no HOMIES are defines, we can exit immedeately
+  # if no HOMIES are defined, we can exit immedeately
   if [[ ! -v HOMIES[@] ]] || [ ${#HOMIES[@]} -eq 0 ]; then
     return 0
   fi
@@ -144,6 +145,23 @@ function setMotionDetectionState () {
   esac
 }
 
+commandsList='{"commands": [
+              {"command": "help", "description": "show commands list"},
+              {"command": "ping", "description": "return pong"},
+              {"command": "reboot", "description": "reboot bot server"},
+              {"command": "shutdown", "description": "shut down bot server"},
+              {"command": "restartme", "description": "restart motioneye.service"},
+              {"command": "status", "description": "get system status"},
+              {"command": "snapshot", "description": "get snapshots from all cameras"},
+              {"command": "uptime", "description": "call uptime"},
+              {"command": "df", "description": "call df -h"},
+              {"command": "mdon", "description": "enable motion detection"},
+              {"command": "mdoff", "description": "disable motion detection"},
+              {"command": "setcommands", "description": "update commands at @BotFather"}
+            ]}'
+# set the bots commands
+curl -s "https://api.telegram.org/bot$BOT_TOKEN/setMyCommands" -H "Content-Type: application/json" -d "$commandsList" >/dev/null
+
 # start the bot loop for continuously checking for updates on the telegram channel
 telegram --quiet --icon $ICON_INFO --text "Awaiting orders!"
 while :
@@ -188,7 +206,7 @@ do
 		/mdon - enables motion detection on all cameras
 		/mdoff - disables motion detection on all cameras
 		/setcommands - sends the commands list to @BotFather
-		TXTEOF
+TXTEOF
           telegram --quiet --question  --title "help" --text "${helpText}"
           ;;
         /ping)
@@ -224,19 +242,35 @@ do
           i=1
           # the sleeps in the following are a hack to work around the unpredictable link creation by motion
           while [[ $i -le numOfCams ]] ; do
+            j=0
             curl -s "http://localhost:7999/${i}/action/snapshot" >/dev/null
-            while [ ! -f "${CONDOCAM_IMAGE_FOLDER}/Camera${i}/lastsnap.jpg" ]; do sleep 1; done # give the system some time to respond
-              telegram --quiet --photo "${CONDOCAM_IMAGE_FOLDER}/Camera${i}/lastsnap.jpg"
-              i=$((i+1))
-          done
-          sleep 2 # give the system some time to respond
-          i=1
-          # the handling of the lastsnap.jpg link is weird, so it is better to remove the link
-          # in order to get a link to a new image the next time a snapshot is requested again
-          while [[ $i -le numOfCams ]] ; do
-            sudo rm "${CONDOCAM_IMAGE_FOLDER}/Camera${i}/lastsnap.jpg"
+            while [ ! -f "${CONDOCAM_IMAGE_FOLDER}/Camera${i}/lastsnap.jpg" ]; do
+              j=$((j+1)); #counter for not sleeping forever if snapshot is not created
+              if [[ $j -ge 10 ]]; then
+                break
+              else
+                sleep 1
+              fi
+            done # give the system some time to respond
+            if [[ $j -ge 10 ]]; then
+                telegram --quiet --error --text "Could not get a snapshot from Camera${i}!"
+              else
+                telegram --quiet --photo "${CONDOCAM_IMAGE_FOLDER}/Camera${i}/lastsnap.jpg"
+                sleep 1
+                # the handling of the lastsnap.jpg link is weird, so it is better to remove the link
+                # in order to get a link to a new image the next time a snapshot is requested again
+                sudo rm "${CONDOCAM_IMAGE_FOLDER}/Camera${i}/lastsnap.jpg"
+            fi
             i=$((i+1))
           done
+          #sleep 2 # give the system some time to respond
+          #i=1
+          # the handling of the lastsnap.jpg link is weird, so it is better to remove the link
+          # in order to get a link to a new image the next time a snapshot is requested again
+          #while [[ $i -le numOfCams ]] ; do
+          #  sudo rm "${CONDOCAM_IMAGE_FOLDER}/Camera${i}/lastsnap.jpg"
+          #  i=$((i+1))
+          #done
           ;;
         /uptime)
           text=$( uptime )
@@ -255,20 +289,6 @@ do
           ;;
         /setcommands)
         # be carfull with the formatting of this. It took me a while to write the JSON in a format which gets accepted by @BotFather
-          commandsList='{"commands": [
-              {"command": "help", "description": "show commands list"},
-              {"command": "ping", "description": "return pong"},
-              {"command": "reboot", "description": "reboot bot server"},
-              {"command": "shutdown", "description": "shut down bot server"},
-              {"command": "restartme", "description": "restart motioneye.service"},
-              {"command": "status", "description": "get system status"},
-              {"command": "snapshot", "description": "get snapshots from all cameras"},
-              {"command": "uptime", "description": "call uptime"},
-              {"command": "df", "description": "call df -h"},
-              {"command": "mdon", "description": "enable motion detection"},
-              {"command": "mdoff", "description": "disable motion detection"},
-              {"command": "setcommands", "description": "update commands at @BotFather"}
-            ]}'
           # setMyCommands is not supported by telegram
           # TODO add it later to that
           curl -s "https://api.telegram.org/bot$BOT_TOKEN/setMyCommands" -H "Content-Type: application/json" -d "$commandsList" >/dev/null

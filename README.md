@@ -31,7 +31,7 @@ This project is based on the work from following other projects:
 
 ## <a name="project-requirements"/>Project Requirements
 
-The project will run on any **Raspberry Pi 2 or newer**. Actually it is designed to run on any Raspberry Pi, but unfortunately the support of OpenCV and Motion is limited for the ARMv6 architecture of older Raspberry Pis like Raspberry Pi Zero and Raspberry Pi 1 (see [Specifications](https://en.wikipedia.org/wiki/Raspberry_Pi#Specifications) for details). These models are not supported out of the box, but you can get the project running on these, if you compile `python-opencv` on your own. The people detection part requires the most CPU power and if you use earlier models, you will experience a bigger lag for the alerts via telegram. The following describes the setup that I use with good results:
+The project will run on any **Raspberry Pi 2 or newer**. Originally it was designed to run on any Raspberry Pi, but unfortunately the support of OpenCV and Motion is limited for the ARMv6 architecture of older Raspberry Pis like Raspberry Pi Zero and Raspberry Pi 1 (see [Specifications](https://en.wikipedia.org/wiki/Raspberry_Pi#Specifications) for details). These models are not supported out of the box, but you can get the project running on these, if you compile `python-opencv` on your own. The people detection part requires the most CPU power and if you use earlier models, you will experience a bigger lag for the alerts via telegram. The following describes the setup that I use with good results:
 
 **Setup #1 "Surveillance Camera for my home"**
 This setup features three cameras that overlook the important areas that intruders might pass on their way into my home.
@@ -52,6 +52,7 @@ I use this setup for small mobile homes. One camera is enough to overlook the do
 - 1 USB camera:
   - Chicony Electronics Co., Ltd HP Wide Vision HD Camera (04f2:b6b6)
   
+
 **Note:** although the image detection should run on any Raspberry Pi model, you should go for a Raspberry Pi 4. The performance will vary heavily, as my quick and dirty measurements show for images of size 320x240 pixels.
 
 | Model                           | typical processing time |
@@ -96,7 +97,7 @@ If everything works fine, you can set up your **contocam.ai** in less than 1 hou
 
 In order to use the messaging feature, you need a **Telegram** account and app. See [telegram.org](https://telegram.org/) on how to set this up.  
 Once you have telegram installed, you need to create a **bot** for communication with your **condocam.ai** installation. This can be done by talking to **[@BotFather](https://core.telegram.org/bots#6-botfather)** in your telegram app. [Follow this guide](https://core.telegram.org/bots#6-botfather), or google for it.
-Once you have obtained a **token** to authorize your bot, you can start the installation. The **token** is a string like ```110201543:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw``` that is required to authorize the bot and send requests to the Bot API. condocam.ai will use this **token** to send messages to you.  
+Once you have obtained a **API token** to authorize your bot, you can start the installation. The **API token** is a string like ```110201543:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw``` that is required to authorize the bot and send requests to the Bot API. condocam.ai will use this **API token** to send messages to you.  
 After setting up the **Telegram bot**, send any message to your bot. 
 **Note:** If you do not continue with the installation within the next 24h you have to send a message to your bot again!  
 **condocam.ai** will use that message to set you as  administrator. You can change the configured administrator later by editing ```/etc/condocam/condocambotbot.conf``` on the device, but that is some effort you can avoid by using the admin device/account for setting all up
@@ -112,7 +113,7 @@ For Linux I provide a script that downloads Raspberry Pi OS and flashes it onto 
    unzip main.zip
    ```
 2. Open `condocam.ai-main/condocam-pi/firstrun.sh` with a text editor and configure everything in the marked section to your liking.  
-   Set the ```BOT_TOKEN``` to the **token** of your bot from the preparation  
+   Set the ```BOT_TOKEN``` to the **API token** of your bot from the preparation  
    You also might want to generate your `WPA_PASSPHRASE` via `wpa_passphrase MY_WIFI passphrase` , or  use the [WPA PSK (Raw Key) Generator](https://www.wireshark.org/tools/wpa-psk.html), and add the credentials to the file.
 
    ```bash
@@ -120,9 +121,17 @@ For Linux I provide a script that downloads Raspberry Pi OS and flashes it onto 
    #----------------------- START OF CONFIGURATION --------------------------------
    #-------------------------------------------------------------------------------
    
+   # copy here your API token obtained from @BotFather
+   BOT_TOKEN=COPY_BOT_TOKEN_HERE
    # which hostname do you want to give your raspberry pi?
    HOSTNAME=condocam
-   BOT_TOKEN=COPY_BOT_TOKEN_HERE
+   # username: beep, password: projects
+   # you can change the password if you want and generate a new password with
+   # Linux: mkpasswd --method=SHA-256
+   # Windows: you can use an online generator like https://www.dcode.fr/crypt-hasing-function
+   USERNAME=beep
+   # shellcheck disable=SC2016
+   PASSWD='$5$oLShbrSnGq$nrbeFyt99o2jOsBe1XRNqev5sWccQw8Uvyt8jK9mFR9' #keep single quote to avoid expansion of $
    # configure the wifi connection
    # the example WPA_PASSPHRASE is generated via
    #     wpa_passphrase MY_WIFI passphrase
@@ -138,7 +147,7 @@ For Linux I provide a script that downloads Raspberry Pi OS and flashes it onto 
    XKBOPTIONS=""
    # if you want to use an ENC28J60 Ethernet HAT, enable it here
    ENABLE_ENC28J60=false
-   # if you want to setup RaspAP, so this device can be used as hot spot, enable it here
+   # if you want to setup RaspAP, so this device can be used as hotspot, enable it here
    # if you enable this feature, you need an Ethernet interface configured or another interfact with Internet connection!
    ENABLE_RASPAP=false
    
@@ -146,7 +155,7 @@ For Linux I provide a script that downloads Raspberry Pi OS and flashes it onto 
    #------------------------ END OF CONFIGURATION ---------------------------------
    #-------------------------------------------------------------------------------
    ```
-
+   
 3. Insert the Micro SD card that you want to get prepared as condocam.ai into your computing device
 
 4. Continue in the shell
@@ -164,22 +173,16 @@ For Linux I provide a script that downloads Raspberry Pi OS and flashes it onto 
 
 8. Wait a while (~45 minutes, depending on the number of system updates available) 
 
-   For troubleshooting, you can check the progress by checking the logs. After 5 minutes the resize of the partitions and ```firstrun.sh``` should be finished, so that you can ssh into the **condocam.ai** and whatch the installation process
+   For troubleshooting, you can check the progress by checking the logs. After 5 minutes the resize of the partitions and ```firstrun.sh``` should be finished, so that you can ```ssh``` into the **condocam.ai** and watch the installation process
 
    ```bash
-   ssh -x pi@condocam.local
+   ssh -x beep@condocam.local
    tail -f /boot/secondrun.log
    ```
 
-   The password for the ```pi``` user is not changed from the default, so you should change it or even create a new user, e.g. the user ```beep``` and remove the user ```pi``` including his home folder
+   The password for the ```beep``` user is ```projects```,  if you did not change it during setup
 
-   ```
-   sudo useradd -m beep -G sudo
-   sudo passwd beep-projects
-   sudo deluser -remove-home pi
-   ```
-
-9. condocam.ai will message you once the installation is finished. You can then login to the motionEye web interface at a [http://condocam:8765](http://condocam:8765)
+9. ***condocam.ai*** will message you via the Telegram bot, once the installation is finished. You can then login to the motionEye web interface at a [http://condocam:8765](http://condocam:8765)
 
    ```
    user: admin
@@ -188,7 +191,7 @@ For Linux I provide a script that downloads Raspberry Pi OS and flashes it onto 
 
    - You should change the passwords for the admin and user accounts
    - For configuring motionEye, see [Configuration](https://github.com/ccrisan/motioneye/wiki/Configuration)
-   - The cameras are preconfigured, but there so many different camera models out there so that you should adjust the default configuration to match your setup
+   - The cameras are preconfigured, but there are so many different camera models out there and you should adjust the default configuration to match your setup
    - If you selected to install RaspAP, check [RaspAP Basic Settings](https://docs.raspap.com/ap-basics/)
    
 10. send ```/setcommands``` to your bot, in order to update the bots commands in the telegram chat menu
@@ -214,9 +217,17 @@ For Linux I provide a script that downloads Raspberry Pi OS and flashes it onto 
    #----------------------- START OF CONFIGURATION --------------------------------
    #-------------------------------------------------------------------------------
    
+   # copy here your API token obtained from @BotFather
+   BOT_TOKEN=COPY_BOT_TOKEN_HERE
    # which hostname do you want to give your raspberry pi?
    HOSTNAME=condocam
-   BOT_TOKEN=COPY_BOT_TOKEN_HERE
+   # username: beep, password: projects
+   # you can change the password if you want and generate a new password with
+   # Linux: mkpasswd --method=SHA-256
+   # Windows: you can use an online generator like https://www.dcode.fr/crypt-hasing-function
+   USERNAME=beep
+   # shellcheck disable=SC2016
+   PASSWD='$5$oLShbrSnGq$nrbeFyt99o2jOsBe1XRNqev5sWccQw8Uvyt8jK9mFR9' #keep single quote to avoid expansion of $
    # configure the wifi connection
    # the example WPA_PASSPHRASE is generated via
    #     wpa_passphrase MY_WIFI passphrase
@@ -243,7 +254,7 @@ For Linux I provide a script that downloads Raspberry Pi OS and flashes it onto 
 
 6. Make sure that the `boot`-partition of the Micro SD card is accessible via file explorer
 
-7. Open `cmdline.txt` from the Micro SD card and copy the `root=PARTUUID=`-Number over into the `cmdline.txt` in the `SystaPi_files` subfolder. If you do not do this step, your pi will not boot!
+7. Open `cmdline.txt` from the Micro SD card and copy the `root=PARTUUID=`-Number over into the `cmdline.txt` in the `condocam-pi` subfolder. If you do not do this step, your pi will not boot!
 
 8. Copy all files and folders from the `condocam-pi` subfolder to `boot`-partition of the Micro SD card
 
@@ -253,20 +264,14 @@ For Linux I provide a script that downloads Raspberry Pi OS and flashes it onto 
 
 11. Wait a while (~45 minutes, depending on the number of system updates available) 
 
-    For troubleshooting, you can check the progress by checking the logs. After 5 minutes the resize of the partitions and ```firstrun.sh``` should be finished, so that you can ssh into the **condocam.ai** and whatch the installation process
+    For troubleshooting, you can check the progress by checking the logs. After 5 minutes the resize of the partitions and ```firstrun.sh``` should be finished, so that you can ```ssh``` into the **condocam.ai** and watch the installation process
 
     ```bash
-    ssh -x pi@condocam.local
+    ssh -x beep@condocam.local
     tail -f /boot/secondrun.log
     ```
 
-    The password for the `pi` user is not changed from the default, so you should change it or even create a new user, e.g. the user `beep` and remove the user `pi` including his home folder
-
-    ```
-    sudo useradd -m beep -G sudo
-    sudo passwd beep-projects
-    sudo deluser -remove-home pi
-    ```
+    The password for the ```beep``` user is ```projects```,  if you did not change it during setup
 
 12. The condocam.ai will message you once the installation is finished. You can then login to the motionEye web interface at a [http://condocam:8765](http://condocam:8765)
 
@@ -279,7 +284,7 @@ For Linux I provide a script that downloads Raspberry Pi OS and flashes it onto 
     - For configuring motionEye, see [Configuration](https://github.com/ccrisan/motioneye/wiki/Configuration)
     - The cameras are preconfigured, but there so many different camera models out there so that you should adjust the default configuration to match your setup
     - If you selected to install RaspAP, check [RaspAP Basic Settings](https://docs.raspap.com/ap-basics/)
-    
+
 13. Send `/setcommands` to your bot, in order to update the bots commands in the telegram chat menu
 
 ## <a name="bot-commands" />Bot commands

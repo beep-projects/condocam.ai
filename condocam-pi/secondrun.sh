@@ -39,8 +39,33 @@
 #######################################
 function waitForApt() {
   while sudo fuser /var/{lib/{dpkg,apt/lists},cache/apt/archives}/lock >/dev/null 2>&1; do
-   echo waiting for access to apt lock files ...
+   echo [$(date +"%T")] waiting for access to apt lock files ...
    sleep 1
+  done
+}
+
+#######################################
+# Checks if internet cann be accessed
+# and waits until they become available. 
+# Warning, you might get stuck forever in here
+# Globals:
+#   None
+# Arguments:
+#   None
+# Outputs:
+#   None
+#######################################
+function waitForInternet() {
+  until nc -zw1 google.com 443 >/dev/null 2>&1;  do
+    #newer Raspberry Pi OS versions do not have nc preinstalled, but wget is still there
+    wget -q --spider http://google.com
+    if [ $? -eq 0 ]; then
+      break # we are online
+    else
+      #we are still offline
+      echo [$(date +"%T")] waiting for internet access ...
+      sleep 1
+    fi
   done
 }
 
@@ -50,10 +75,10 @@ trap 'exec 2>&4 1>&3' 0 1 2 3
 exec 1>/boot/secondrun.log 2>&1
 
 echo "START secondrun.sh"
-#the following variables should be set by firstrun.sh
+# the following variables should be set by firstrun.sh
 BOT_TOKEN=COPY_BOT_TOKEN_HERE
 ENABLE_RASPAP=false
-#fixed configs
+# fixed configs
 SERVICE_FOLDER=/etc/systemd/system
 TELEGRAM_FOLDER=/etc/telegram
 TELEGRAM_CONF="${TELEGRAM_FOLDER}/telegram.conf"
@@ -62,7 +87,7 @@ CONDOCAM_IMAGE_FOLDER=/var/log/condocam/images
 CONDOCAMBOT_CONF="${CONDOCAM_FOLDER}/condocambot.conf"
 PROTOTXT="MobileNetSSD_deploy.prototxt.txt"
 CAFFEEMODEL="MobileNetSSD_deploy.caffemodel"
-#check the arch, as armv6l systems are not properly supported
+# check the arch, as armv6l systems are not properly supported
 ARCH=$(arch)
 
 echo "create required directories"
@@ -73,13 +98,17 @@ sudo mkdir -p "${CONDOCAM_IMAGE_FOLDER}"
 echo "mkdir -p ${TELEGRAM_FOLDER}"
 sudo mkdir -p "${TELEGRAM_FOLDER}"
 
-#first we setup telegram, so we can send status messages to the user
+# internet connectivity is required for installing required packages and updating the system
+waitForInternet
+
+# first we setup telegram, so we can send status messages to the user
 echo "installing utilities missing in Raspberry OS, but needed by this script"
 waitForApt
+echo "sudo apt install -y bc jq"
 sudo apt install -y bc jq
 #setup the telegram bot
 echo "I am now setting up the telegram communication"
-#make sure that the telegram scrip uses the configured TELEGRAM_CONF
+# make sure that the telegram scrip uses the configured TELEGRAM_CONF
 sudo sed -i "s/^FILE_CONF=.*/FILE_CONF=${TELEGRAM_CONF//\//\\/}/" /boot/files/telegram
 sudo cp /boot/files/telegram.conf "${TELEGRAM_CONF}"
 sudo cp /boot/files/telegram /usr/local/sbin/telegram
@@ -87,20 +116,20 @@ sudo chmod +x /usr/local/sbin/telegram
 
 echo "configuring telegram bot"
 echo "curl -X GET \"https://api.telegram.org/bot${BOT_TOKEN}/getUpdates\""
-#for this call to be successfull, there must be one new message in the bot chat, not older than 24h
+# for this call to be successfull, there must be one new message in the bot chat, not older than 24h
 UPDATEJSON=$( curl -X GET "https://api.telegram.org/bot${BOT_TOKEN}/getUpdates" )
 echo "${UPDATEJSON}"
-#get the client_id for sending the messages to the created telegram bot
+# get the client_id for sending the messages to the created telegram bot
 CHAT_ID=$( echo "${UPDATEJSON}" | jq '.result | .[0].message.chat.id' )
 #get the information for the condocambot.conf
 LAST_UPDATE_ID=$( echo "${UPDATEJSON}" | jq '.result | .[0].update_id' )
-#note, the condocambot is not very picky, the sender of the first message it sees, will be the owner
+# note, the condocambot is not very picky, the sender of the first message it sees, will be the owner
 ADMIN_ID=$( echo "${UPDATEJSON}" | jq '.result | .[0].message.from.id' )
 ADMIN_IS_BOT=$( echo "${UPDATEJSON}" | jq '.result | .[0].message.from.is_bot' )
 ADMIN_FIRST_NAME=$( echo "${UPDATEJSON}" | jq '.result | .[0].message.from.first_name' )
 ADMIN_LANGUAGE_CODE=$( echo "${UPDATEJSON}" | jq '.result | .[0].message.from.language_code' )
 
-#write the configuration for the telegram bot
+# write the configuration for the telegram bot
 sudo sed -i "s/api-key=.*/api-key=${BOT_TOKEN}/" "${TELEGRAM_CONF}"
 sudo sed -i "s/user-id=.*/user-id=${CHAT_ID}/" "${TELEGRAM_CONF}"
 telegram --success --text "telegram bot is installed successfully, continuing to install the rest of the system."
@@ -111,16 +140,18 @@ if [[ "${ARCH}" == "armv6l" ]]; then
 	If you know how to fix these issue, please contribute to the project."
 fi
 
-#first we want to update the system and install packaged
+# now we want to update the system and install packages
 echo "updating the system"
+waitForApt
 sudo apt update
 waitForApt
 sudo apt full-upgrade -y
-#arp-scan is needed by the presence detection of devices and fail2ban you add some security to the system
+# arp-scan is needed by the presence detection of devices and fail2ban you add some security to the system
 waitForApt
+echo "sudo apt install -y arp-scan fail2ban"
 sudo apt install -y arp-scan fail2ban
 
-#write the condocambot.conf file
+# write the condocambot.conf file
 echo
 echo "write the condocambot.conf file"
 echo "BOT_TOKEN=${BOT_TOKEN}" | sudo tee "${CONDOCAMBOT_CONF}" #this call creates the file, the others append to it
@@ -130,27 +161,30 @@ echo "ADMIN_ID=${ADMIN_ID}" | sudo tee -a "${CONDOCAMBOT_CONF}"
 echo "ADMIN_IS_BOT=${ADMIN_IS_BOT}" | sudo tee -a "${CONDOCAMBOT_CONF}"
 echo "ADMIN_FIRST_NAME=${ADMIN_FIRST_NAME}" | sudo tee -a "${CONDOCAMBOT_CONF}"
 echo "ADMIN_LANGUAGE_CODE=${ADMIN_LANGUAGE_CODE}" | sudo tee -a "${CONDOCAMBOT_CONF}"
-#make sure that the condocambot.sh is using the created conf file
+# make sure that the condocambot.sh is using the created conf file
 sudo sed -i "s/^CONF_FILE=.*/CONF_FILE=${CONDOCAMBOT_CONF//\//\\/}/" /boot/files/condocambot.sh
 sudo sed -i "s/^CONDOCAM_IMAGE_FOLDER=.*/CONDOCAM_IMAGE_FOLDER=${CONDOCAM_IMAGE_FOLDER//\//\\/}/" /boot/files/condocambot.sh
 
 telegram --success --text "system is apt updated, next step is to install motion and motionEye"
 
-#just follow the guide on https://github.com/ccrisan/motioneye/wiki/Install-On-Raspbian to install motioneye
+# just follow the guide on https://github.com/ccrisan/motioneye/wiki/Install-On-Raspbian to install motioneye
 
-#install motion and all dependencies
+# install motion and all dependencies
 echo "installing motion and all dependencies"
 if [[ "${ARCH}" == "armv6l" ]]; then
-	#there is no motion package in bullseye build for amrv6l at the moment, so we have to use the old one from buster
-	wget https://github.com/Motion-Project/motion/releases/download/release-4.4.0/pi_buster_motion_4.4.0-1_armhf.deb
+	wget https://github.com/Motion-Project/motion/releases/download/release-4.4.0/bullseye_motion_4.4.0-1_armhf.deb
 	sudo apt install -y ./pi_buster_motion_4.4.0-1_armhf.deb
 else
-	wget https://github.com/Motion-Project/motion/releases/download/release-4.4.0/bullseye_motion_4.4.0-1_armhf.deb
-	sudo apt install -y ./bullseye_motion_4.4.0-1_armhf.deb
+	#there is no 64 bit motion package in bullseye at the moment, so we have to use the old one from buster
+	wget https://github.com/Motion-Project/motion/releases/download/release-4.4.0/buster_motion_4.4.0-1_arm64.deb
+	sudo apt install -y ./buster_motion_4.4.0-1_arm64.deb
 fi
+# Disable motion service, motionEye controls motion
+sudo systemctl stop motion
+sudo systemctl disable motion 
 
-#motion did not create the log folder and then complained about missing permissions
-#create the folder if it does not exist
+# motion did not create the log folder and then complained about missing permissions
+# create the folder if it does not exist
 motionLogDir="/var/log/motion"
 if [[ ! -e ${motionLogDir} ]]; then
     sudo mkdir -p ${motionLogDir}
@@ -161,83 +195,85 @@ if [[ ! -e ${motionLogDir} ]]; then
 fi
 
 echo "installing motioneye dependencies"
+echo "sudo apt install -y libssl-dev libcurl4-openssl-dev libjpeg-dev libz-dev"
 sudo apt install -y libssl-dev libcurl4-openssl-dev libjpeg-dev libz-dev
 #sudo apt install -y python-pip python-dev libssl-dev libcurl4-openssl-dev libjpeg-dev libz-dev python-pil
-#this part is getting ugly because motioneye requires the deprecated python2.7
-#be sure to use python2.7 and make python link to python2
+# this part is getting ugly because motioneye requires the deprecated python2.7
+# be sure to use python2.7 and make python link to python2
+echo "sudo apt install -y python-is-python2 python-dev-is-python2"
 sudo apt install -y python-is-python2 python-dev-is-python2
-#get pip for python 2.7 which is no longer in the Raspberry Pi OS repositories
+# get pip for python 2.7 which is no longer in the Raspberry Pi OS repositories
 wget https://bootstrap.pypa.io/pip/2.7/get-pip.py
-#install pip
+# install pip
 sudo python get-pip.py
-#install pillow, which is also no longer available in the Raspberry Pi OS repositories
+# install pillow, which is also no longer available in the Raspberry Pi OS repositories
 sudo pip install pillow
 
 echo "installing motioneye"
 sudo pip install motioneye
 
-#don't do this step from the installation guide, we do not want to use the default config
-#sudo cp /usr/local/share/motioneye/extra/motioneye.conf.sample /etc/motioneye/motioneye.conf
+# don't do this step from the installation guide, we do not want to use the default config
+# sudo cp /usr/local/share/motioneye/extra/motioneye.conf.sample /etc/motioneye/motioneye.conf
 
-#find all connected USB cameras and add them to motioneye
-#Note: each cam creates two interfaces, the first one should be the video, the second one the meta data
+# find all connected USB cameras and add them to motioneye
+# Note: each cam creates two interfaces, the first one should be the video, the second one the meta data
 v4l2-ctl --list-devices
 USBCAMS=$( v4l2-ctl --list-devices | awk '/\(usb-/{getline; print}' )
 echo "USB cameras:"
 echo "${USBCAMS}"
-#add all USBCAMS to motion and motioneye
+# add all USBCAMS to motion and motioneye
 CAMID=0
 for CAM in $USBCAMS
 do
-	#get maximum resolution of CAM
+	# get maximum resolution of CAM
 	RESOLUTION=$( v4l2-ctl --list-formats-ext -d "${CAM}" | grep Size | cut -d " " -f3 | sort -u -n -tx -k1 -k2 | tail -1 )
 	WIDTH=$(echo "${RESOLUTION}" | cut -f1 -dx)
 	HEIGHT=$(echo "${RESOLUTION}" | cut -f2 -dx)
 	echo "configuring ${CAM}"
 	echo "resolution = ${RESOLUTION}"
-	#creat config for CAM
+	# creat config for CAM
 	CAMID=$((CAMID+1))
 	echo "camera name = Camera${CAMID}"
 	## @id $CAMID
 	sudo sed -i "s/@id .*/@id ${CAMID}/" /boot/files/template-camera.conf
-	#set motion detection threshold to 1% of all pixels
+	# set motion detection threshold to 1% of all pixels
 	THRESH=$(echo "(${WIDTH}*${HEIGHT}*0.01)/1" | bc)
-	#set motion detection max_threshold to 10% of all pixels
+	# set motion detection max_threshold to 10% of all pixels
 	MAX_THRESH=$(echo "(${WIDTH}*${HEIGHT}*0.1)/1" | bc)
-	#correct values if WIDTH or HEIGHT is > 1000px
+	# set different values if WIDTH or HEIGHT is > 1000px
 	if [[ ${WIDTH} -gt 1000 ]] || [[ ${HEIGHT} -gt 1000 ]] ; then
 		THRESH=$(echo "(${WIDTH}*${HEIGHT}*0.003)/1" | bc)
 		MAX_THRESH=$(echo "(${WIDTH}*${HEIGHT}*0.03)/1" | bc)
 	fi
-	#threshold $THRESH
+	# threshold $THRESH
 	sudo sed -i "s/threshold .*/threshold ${THRESH}/" /boot/files/template-camera.conf
-	#threshold_maximum $MAX_THRESH
+	# threshold_maximum $MAX_THRESH
 	sudo sed -i "s/threshold_maximum .*/threshold_maximum ${MAX_THRESH}/" /boot/files/template-camera.conf
-	#snapshot_filename Cam${CAMID}_%Y-%m-%d-%H-%M-%S
+	# snapshot_filename Cam${CAMID}_%Y-%m-%d-%H-%M-%S
 	sudo sed -i "s/snapshot_filename .*/snapshot_filename Cam${CAMID}_\%Y-\%m-\%d-\%H-\%M-\%S/" /boot/files/template-camera.conf
-	#picture_filename Cam${CAMID}_%Y-%m-%d-%H-%M-%S
+	# picture_filename Cam${CAMID}_%Y-%m-%d-%H-%M-%S
 	sudo sed -i "s/picture_filename .*/picture_filename Cam${CAMID}_\%Y-\%m-\%d-\%H-\%M-\%S/" /boot/files/template-camera.conf
-	#target_dir ${CONDOCAM_IMAGE_FOLDER}/Camera${CAMID}
+	# target_dir ${CONDOCAM_IMAGE_FOLDER}/Camera${CAMID}
 	sudo sed -i "s/target_dir .*/target_dir ${CONDOCAM_IMAGE_FOLDER//\//\\/}\/Camera${CAMID}/" /boot/files/template-camera.conf
-	#stream_port 808$CAMID
+	# stream_port 808$CAMID
 	sudo sed -i "s/stream_port .*/stream_port 808${CAMID}/" /boot/files/template-camera.conf
-	#text_left Camera1
+	# text_left Camera1
 	sudo sed -i "s/text_left .*/text_left Camera${CAMID}/" /boot/files/template-camera.conf
-	#videodevice $CAM, adjust the command for the / in the path $CAM
+	# videodevice $CAM, adjust the command for the / in the path $CAM
 	sudo sed -i 's,videodevice .*,'"videodevice ${CAM}"',' "/boot/files/template-camera.conf"
-	#camera_name Camera1
+	# camera_name Camera1
 	sudo sed -i "s/camera_name .*/camera_name Camera${CAMID}/" /boot/files/template-camera.conf
-	#height 1080
+	# height 1080
 	sudo sed -i "s/height .*/height ${HEIGHT}/" /boot/files/template-camera.conf
-	#width 1920
+	# width 1920
 	sudo sed -i "s/width .*/width ${WIDTH}/" /boot/files/template-camera.conf
-	#update all occurences of the motioneye.conf
+	# update all occurences of the motioneye.conf
 	sudo sed -i "s/ \".*\/motioneye.conf\"/ \"${CONDOCAM_FOLDER//\//\\/}\/motioneye.conf\"/" /boot/files/template-camera.conf
-	#copy the config to the motioneye folder
+	# copy the config to the motioneye folder
 	echo "cp /boot/files/template-camera.conf \"${CONDOCAM_FOLDER}/camera-${CAMID}.conf\""
 	sudo cp /boot/files/template-camera.conf "${CONDOCAM_FOLDER}/camera-${CAMID}.conf"
 
-	#add CAM.config to motion.conf
+	# add CAM.config to motion.conf
 	sudo bash -c "echo \"camera camera-${CAMID}.conf\" >> /boot/files/template-motion.conf"
 
 done
@@ -247,8 +283,8 @@ echo "cp /boot/files/template-motion.conf ${CONDOCAM_FOLDER}/motion.conf"
 sudo cp /boot/files/template-motion.conf "${CONDOCAM_FOLDER}/motion.conf"
 
 #make sure the paths configured in motioneye.conf are consistent with the paths configured here
-sudo sed -i "s/conf_path .*/conf_path ${CONDOCAM_FOLDER//\//\\/}/" "${CONDOCAM_FOLDER}/motioneye.conf"
-sudo sed -i "s/media_path .*/media_path ${CONDOCAM_IMAGE_FOLDER//\//\\/}/" "${CONDOCAM_FOLDER}/motioneye.conf"
+sudo sed -i "s/conf_path .*/conf_path ${CONDOCAM_FOLDER//\//\\/}/" "/boot/files/motioneye.conf"
+sudo sed -i "s/media_path .*/media_path ${CONDOCAM_IMAGE_FOLDER//\//\\/}/" "/boot/files/motioneye.conf"
 echo "cp /boot/files/motioneye.conf ${CONDOCAM_FOLDER}/motioneye.conf"
 sudo cp /boot/files/motioneye.conf "${CONDOCAM_FOLDER}/motioneye.conf"
 #echo "rm /boot/files/template-camera.conf"
@@ -261,9 +297,10 @@ else
 	telegram --success --text "motion and motionEye are now installed, next one up is OpenCV and its dependencies for enabling people detection"
 	echo "install python3 dependecies for people detection with OpenCV"
 	waitForApt
+	echo "sudo apt install -y libatlas-base-dev python3-pip openexr libgtk-3-dev"
 	sudo apt install -y libatlas-base-dev python3-pip openexr libgtk-3-dev
-	#numpy only supports python3
-	#make sure to use -U because numpy is already installed on Raspberry Pi OS but needs an update
+	# numpy only supports python3
+	# make sure to use -U because numpy is already installed on Raspberry Pi OS but needs an update
 	sudo pip3 install -U numpy opencv-utils opencv-python imutils watchdog filetype
 fi
 
@@ -297,7 +334,7 @@ sudo cp /boot/files/condocambot.sh "${CONDOCAM_FOLDER}/condocambot.sh"
 sudo chmod 755 "${CONDOCAM_FOLDER}/condocambot.sh"
 sudo cp /boot/files/condocambot.service "${SERVICE_FOLDER}/condocambot.service"
 
-#reload the service deamons and start the newly installed services
+# reload the service deamons and start the newly installed services
 sudo systemctl daemon-reload
 sudo systemctl enable condocambot.service
 #sudo systemctl start condocambot.service
@@ -319,6 +356,7 @@ telegram --success --text "All packages are installed now, I am just doing some 
 
 echo "remove autoinstalled packages" 
 waitForApt
+echo "sudo apt -y autoremove"
 sudo apt -y autoremove
 
 echo "add run /boot/thirdrun.sh command to cmdline.txt file for next reboot"
