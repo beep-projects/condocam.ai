@@ -171,7 +171,7 @@ For Linux I provide a script that downloads Raspberry Pi OS and flashes it onto 
 
 7. Power up the Raspberry Pi
 
-8. Wait a while (~45 minutes, depending on the number of system updates available) 
+8. Wait a while (~10-45 minutes, depending on the number of system updates available) 
 
    For troubleshooting, you can check the progress by checking the logs. After 5 minutes the resize of the partitions and ```firstrun.sh``` should be finished, so that you can ```ssh``` into the **condocam.ai** and watch the installation process
 
@@ -193,8 +193,6 @@ For Linux I provide a script that downloads Raspberry Pi OS and flashes it onto 
    - For configuring motionEye, see [Configuration](https://github.com/ccrisan/motioneye/wiki/Configuration)
    - The cameras are preconfigured, but there are so many different camera models out there and you should adjust the default configuration to match your setup
    - If you selected to install RaspAP, check [RaspAP Basic Settings](https://docs.raspap.com/ap-basics/)
-   
-10. send ```/setcommands``` to your bot, in order to update the bots commands in the telegram chat menu
 
 #### <a name="installation-on-windows"/>Installation on Windows
 1. Install Raspberry Pi OS following this [guide](https://www.raspberrypi.org/documentation/installation/installing-images/).
@@ -262,7 +260,7 @@ For Linux I provide a script that downloads Raspberry Pi OS and flashes it onto 
 
 10. Power up the Raspberry Pi
 
-11. Wait a while (~45 minutes, depending on the number of system updates available) 
+11. Wait a while (~10-45 minutes, depending on the number of system updates available) 
 
     For troubleshooting, you can check the progress by checking the logs. After 5 minutes the resize of the partitions and ```firstrun.sh``` should be finished, so that you can ```ssh``` into the **condocam.ai** and watch the installation process
 
@@ -284,8 +282,6 @@ For Linux I provide a script that downloads Raspberry Pi OS and flashes it onto 
     - For configuring motionEye, see [Configuration](https://github.com/ccrisan/motioneye/wiki/Configuration)
     - The cameras are preconfigured, but there so many different camera models out there so that you should adjust the default configuration to match your setup
     - If you selected to install RaspAP, check [RaspAP Basic Settings](https://docs.raspap.com/ap-basics/)
-
-13. Send `/setcommands` to your bot, in order to update the bots commands in the telegram chat menu
 
 ## <a name="bot-commands" />Bot commands
 
