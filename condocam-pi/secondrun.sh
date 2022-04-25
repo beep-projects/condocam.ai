@@ -39,7 +39,7 @@
 #######################################
 function waitForApt() {
   while sudo fuser /var/{lib/{dpkg,apt/lists},cache/apt/archives}/lock >/dev/null 2>&1; do
-   echo [$(date +"%T")] waiting for access to apt lock files ...
+   echo ["$(date +%T)"] waiting for access to apt lock files ...
    sleep 1
   done
 }
@@ -58,12 +58,11 @@ function waitForApt() {
 function waitForInternet() {
   until nc -zw1 google.com 443 >/dev/null 2>&1;  do
     #newer Raspberry Pi OS versions do not have nc preinstalled, but wget is still there
-    wget -q --spider http://google.com
-    if [ $? -eq 0 ]; then
+    if wget -q --spider http://google.com; then
       break # we are online
     else
       #we are still offline
-      echo [$(date +"%T")] waiting for internet access ...
+      echo ["$(date +%T)"] waiting for internet access ...
       sleep 1
     fi
   done
