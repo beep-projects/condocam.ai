@@ -31,7 +31,7 @@ This project is based on the work from following other projects:
 
 ## <a name="project-requirements"/>Project Requirements
 
-The project will run on any **Raspberry Pi 2 or newer**. Originally it was designed to run on any Raspberry Pi, but unfortunately the support of OpenCV and Motion is limited for the ARMv6 architecture of older Raspberry Pis like Raspberry Pi Zero and Raspberry Pi 1 (see [Specifications](https://en.wikipedia.org/wiki/Raspberry_Pi#Specifications) for details). These models are not supported out of the box, but you can get the project running on these, if you compile `python-opencv` on your own. The people detection part requires the most CPU power and if you use earlier models, you will experience a bigger lag for the alerts via telegram. The following describes the setup that I use with good results:
+The project will run on any **Raspberry Pi 3 or newer**. Originally it was designed to run on any Raspberry Pi, but unfortunately the support of OpenCV and Motion is limited for the ARMv6 architecture of older Raspberry Pis like Raspberry Pi Zero and Raspberry Pi 1 (see [Specifications](https://en.wikipedia.org/wiki/Raspberry_Pi#Specifications) for details). These models are not supported out of the box, but you can get the project running on these, if you compile `python-opencv` on your own. The people detection part requires the most CPU power and if you use earlier models, you will experience a bigger lag for the alerts via telegram. The following describes the setup that I use with good results:
 
 **Setup #1 "Surveillance Camera for my home"**
 This setup features three cameras that overlook the important areas that intruders might pass on their way into my home.
@@ -109,10 +109,10 @@ For Linux I provide a script that downloads Raspberry Pi OS and flashes it onto 
 1. Run the following commands in a shell for downloading and unzipping the project files
 
    ```bash
-   wget https://github.com/beep-projects/condocam.ai/archive/refs/heads/main.zip
-   unzip main.zip
+   wget https://github.com/beep-projects/condocam.ai/releases/download/1.0/condocam.ai-1.0.zip
+   unzip condocam.ai-1.0.zip
    ```
-2. Open `condocam.ai-main/condocam-pi/firstrun.sh` with a text editor and configure everything in the marked section to your liking.  
+2. Open `condocam.ai-1.0/condocam-pi/firstrun.sh` with a text editor and configure everything in the marked section to your liking.  
    Set the ```BOT_TOKEN``` to the **API token** of your bot from the preparation  
    You also might want to generate your `WPA_PASSPHRASE` via `wpa_passphrase MY_WIFI passphrase` , or  use the [WPA PSK (Raw Key) Generator](https://www.wireshark.org/tools/wpa-psk.html), and add the credentials to the file.
 
@@ -161,7 +161,7 @@ For Linux I provide a script that downloads Raspberry Pi OS and flashes it onto 
 4. Continue in the shell
 
    ```bash
-   cd condocam.ai-main
+   cd condocam.ai-1.0
    ./install_condocam.ai.sh
    ```
 
@@ -200,11 +200,11 @@ For Linux I provide a script that downloads Raspberry Pi OS and flashes it onto 
 1. Install Raspberry Pi OS following this [guide](https://www.raspberrypi.org/documentation/installation/installing-images/).
    [Raspberry Pi OS Lite](https://www.raspberrypi.org/software/operating-systems/#raspberry-pi-os-32-bit) is sufficient.
 
-2. Download [condocam.ai](https://github.com/beep-projects/condocam.ai/archive/refs/heads/main.zip)
+2. Download [condocam.ai](https://github.com/beep-projects/condocam.ai/releases/download/1.0/condocam.ai-1.0.zip)
 
 3. Extract the downloaded zip file
 
-4. Change into the `condocam.ai_files` subfolder of the extracted archive
+4. Change into the `condocam-pi` subfolder of the extracted archive
 
 5. Open `firstrun.sh` with a text editor and configure everything in the marked section to your liking.
 
