@@ -1,4 +1,4 @@
-<img src="doc/ressources/condocam.ai_banner.png" alt="condocam.ai_logo" />
+<img src="doc/resources/condocam.ai_banner.png" alt="condocam.ai" />
 
 [![GitHub license](https://img.shields.io/github/license/beep-projects/condocam.ai)](https://github.com/beep-projects/condocam.ai/blob/main/LICENSE) [![shellcheck](https://github.com/beep-projects/condocam.ai/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/beep-projects/condocam.ai/actions/workflows/shellcheck.yml) [![Pylint](https://github.com/beep-projects/condocam.ai/actions/workflows/pylint.yml/badge.svg)](https://github.com/beep-projects/condocam.ai/actions/workflows/pylint.yml) [![GitHub issues](https://img.shields.io/github/issues/beep-projects/condocam.ai)](https://github.com/beep-projects/SystaPi/issues) [![GitHub forks](https://img.shields.io/github/forks/beep-projects/condocam.ai)](https://github.com/beep-projects/condocam.ai/network) [![GitHub stars](https://img.shields.io/github/stars/beep-projects/condocam.ai)](https://github.com/beep-projects/condocam.ai/stargazers) ![GitHub repo size](https://img.shields.io/github/repo-size/beep-projects/condocam.ai)  
 
@@ -27,7 +27,7 @@ This project is based on the work from following other projects:
 
 ## <a name="system-overview"/>System Overview
 
-![project_overview](doc/ressources/project_overview.png)
+![project_overview](doc/resources/project_overview.png)
 
 ## <a name="project-requirements"/>Project Requirements
 
@@ -81,7 +81,7 @@ I use this setup for small mobile homes. One camera is enough to overlook the do
     │   │                       # installs required packages and services
     │   └── thirdrun.sh         # Cleans up after the installation and reboots into the final system
     ├── doc                     # documentation for this project
-    │   └── ressources          # ressource files like images, used for the documentation of this project
+    │   └── resources          # resource files like images, used for the documentation of this project
     ├── install_condocam.ai.sh  # Script for automatically downloading, flashing and configuring 
     │                           # a Micro SD card for running condocam.ai
     ├── LICENSE                 # License for using and editing this software
