@@ -12,7 +12,7 @@ This project is based on the work from following other projects:
 - [motionEye](https://github.com/ccrisan/motioneye) for simplified configutation of [Motion](https://github.com/Motion-Project/motion) and the attached cameras via a web interface
 - [RaspAP](https://raspap.com/) for setting up a mobile hot spot on the **condocam.ai** (only set this up if you know how to secure a Raspberry Pi!)
 - [OpenCV](https://opencv.org/) with a trained [MobileNetSSD](https://github.com/nikmart/pi-object-detection) model for [people detection](https://www.pyimagesearch.com/2017/10/16/raspberry-pi-deep-learning-object-detection-with-opencv/)
-- [telegram-notify](http://www.bernaerts-nicolas.fr/linux/75-debian/351-debian-send-telegram-notification) for sending messages via [Telegram](https://telegram.org/apps)
+- [telegram.bot](https://github.com/beep-projects/telegram.bot) for sending messages via [Telegram](https://telegram.org/apps)
 
 ## Content
 
@@ -31,7 +31,7 @@ This project is based on the work from following other projects:
 
 ## <a name="project-requirements"/>Project Requirements
 
-The project will run on any **Raspberry Pi 3 or newer**. Originally it was designed to run on any Raspberry Pi, but unfortunately the support of OpenCV and Motion is limited for the ARMv6 architecture of older Raspberry Pis like Raspberry Pi Zero and Raspberry Pi 1 (see [Specifications](https://en.wikipedia.org/wiki/Raspberry_Pi#Specifications) for details). These models are not supported out of the box, but you can get the project running on these, if you compile `python-opencv` on your own. The people detection part requires the most CPU power and if you use earlier models, you will experience a bigger lag for the alerts via telegram. The following describes the setup that I use with good results:
+The project will run on any **Raspberry Pi 3 or newer**. Originally it was designed to run on any Raspberry Pi, but unfortunately the support of OpenCV and Motion is limited for the ARMv6 architecture of older Raspberry Pis like Raspberry Pi Zero and Raspberry Pi 1 (see [Specifications](https://en.wikipedia.org/wiki/Raspberry_Pi#Specifications) for details). These models are not supported out of the box, but you can get the project running on these, if you compile `python-opencv` on your own. The people detection part requires the most CPU power and if you use earlier models, you will experience a bigger lag for the alerts via Telegram. The following describes the setups that I use with good results:
 
 **Setup #1 "Surveillance Camera for my home"**
 This setup features three cameras that overlook the important areas that intruders might pass on their way into my home.
@@ -95,12 +95,9 @@ If everything works fine, you can set up your **contocam.ai** in less than 1 hou
 
 #### <a name="setup-a-telegram-bot"/>Setup a Telegram bot
 
-In order to use the messaging feature, you need a **Telegram** account and app. See [telegram.org](https://telegram.org/) on how to set this up.  
-Once you have telegram installed, you need to create a **bot** for communication with your **condocam.ai** installation. This can be done by talking to **[@BotFather](https://core.telegram.org/bots#6-botfather)** in your telegram app. [Follow this guide](https://core.telegram.org/bots#6-botfather), or google for it.
-Once you have obtained a **API token** to authorize your bot, you can start the installation. The **API token** is a string like ```110201543:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw``` that is required to authorize the bot and send requests to the Bot API. condocam.ai will use this **API token** to send messages to you.  
-After setting up the **Telegram bot**, send any message to your bot. 
+In order to use the messaging feature, you need a **Telegram** account and app. See the instructions for [telegram.bot](https://github.com/beep-projects/telegram.bot#usage) on how to set this up. After setting up the **Telegram bot** and obtaining your **API Token**, send any message to your bot. 
 **Note:** If you do not continue with the installation within the next 24h you have to send a message to your bot again!  
-**condocam.ai** will use that message to set you as  administrator. You can change the configured administrator later by editing ```/etc/condocam/condocambotbot.conf``` on the device, but that is some effort you can avoid by using the admin device/account for setting all up
+**condocam.ai** will use the first received message to set the  administrator. So this might fail if you use a bot that was added to a group and other people are messaging there. You can change the configured administrator later by editing ```/etc/condocam/condocambotbot.conf``` on the device, but you have to figure out the needed IDs on your own.
 
 #### <a name="installation-on-linux"/>Installation on Linux
 
