@@ -24,8 +24,8 @@ attackLimit=3 # how many unauthorized requests are allowed before the bot shuts 
 CONDOCAM_IMAGE_FOLDER=/var/log/condocam/images
 
 # some telegram icon codes for easy use
-ICON_INFO=2139
-ICON_WARN=26A0
+#ICON_INFO="\U2139"
+#ICON_WARN="\U26A0"
 
 if [ ! -f "$CONF_FILE" ]
 then
@@ -65,7 +65,7 @@ attackCount=0
 # Arguments:
 #   None
 # Outputs:
-#   send messages via telegram about state changes
+#   send messages via telegram.bot about state changes
 #######################################
 function checkDevicePresence() {
   # if no HOMIES are defined, we can exit immedeately
@@ -111,12 +111,11 @@ function checkDevicePresence() {
 # Activates or deactivates the motion detection
 # based on the given state
 # Globals:
-#   ICON_INFO
 #   numOfCams
 # Arguments:
 #   targetState
 # Outputs:
-#   send the state change via telegram
+#   send the state change via telegram.bot
 #######################################
 function setMotionDetectionState () {
   targetState=$1
@@ -128,7 +127,7 @@ function setMotionDetectionState () {
         curl -s "http://localhost:7999/${i}/detection/start" >/dev/null
         i=$((i+1))
       done
-      telegram --quiet --icon $ICON_INFO --title "Motion Detection" --text "turned on"
+      telegram.bot -bt "${BOT_TOKEN}" -cid "${CHAT_ID}" -q --info --title "Motion Detection" --text "turned on"
       ;;
     off)
       i=1
@@ -137,33 +136,63 @@ function setMotionDetectionState () {
         curl -s "http://localhost:7999/${i}/detection/pause" >/dev/null
         i=$((i+1))
       done
-      telegram --quiet --icon $ICON_INFO --title "Motion Detection" --text "turned off"
+      telegram.bot -bt "${BOT_TOKEN}" -cid "${CHAT_ID}" -q --info --title "Motion Detection" --text "turned off"
       ;;
     *)
-      telegram --quiet --icon $ICON_INFO --title "Motion Detection" --text "unknown target state \"${targetState}\""
+      telegram.bot -bt "${BOT_TOKEN}" -cid "${CHAT_ID}" -q --info --title "Motion Detection" --text "unknown target state \"${targetState}\""
       ;;
   esac
 }
 
-commandsList='{"commands": [
-              {"command": "help", "description": "show commands list"},
-              {"command": "ping", "description": "return pong"},
-              {"command": "reboot", "description": "reboot bot server"},
-              {"command": "shutdown", "description": "shut down bot server"},
-              {"command": "restartme", "description": "restart motioneye.service"},
-              {"command": "status", "description": "get system status"},
-              {"command": "snapshot", "description": "get snapshots from all cameras"},
-              {"command": "uptime", "description": "call uptime"},
-              {"command": "df", "description": "call df -h"},
-              {"command": "mdon", "description": "enable motion detection"},
-              {"command": "mdoff", "description": "disable motion detection"},
-              {"command": "setcommands", "description": "update commands at @BotFather"}
-            ]}'
+function escapeReservedCharacters() {
+  STRING=$1
+  STRING="${STRING//\(/\\\(}"
+  STRING="${STRING//\)/\\\)}"
+  STRING="${STRING//\[/\\\[}"
+  STRING="${STRING//\]/\\\]}"
+  STRING="${STRING//\_/\\\_}"
+  STRING="${STRING//\*/\\\*}"
+  STRING="${STRING//\~/\\\~}"
+  STRING="${STRING//\`/\\\`}"
+  STRING="${STRING//\|/\\\|}"
+  echo "${STRING}"
+}
+
+# commandsList='{"commands": [
+#               {"command": "help", "description": "show commands list"},
+#               {"command": "ping", "description": "return pong"},
+#               {"command": "reboot", "description": "reboot bot server"},
+#               {"command": "shutdown", "description": "shut down bot server"},
+#               {"command": "restartme", "description": "restart motioneye.service"},
+#               {"command": "status", "description": "get system status"},
+#               {"command": "snapshot", "description": "get snapshots from all cameras"},
+#               {"command": "uptime", "description": "call uptime"},
+#               {"command": "df", "description": "call df -h"},
+#               {"command": "mdon", "description": "enable motion detection"},
+#               {"command": "mdoff", "description": "disable motion detection"},
+#               {"command": "setcommands", "description": "update commands at @BotFather"}
+#             ]}'
 # set the bots commands
-curl -s "https://api.telegram.org/bot$BOT_TOKEN/setMyCommands" -H "Content-Type: application/json" -d "$commandsList" >/dev/null
+# TODO use telegram.bot
+# curl -s "https://api.telegram.org/bot$BOT_TOKEN/setMyCommands" -H "Content-Type: application/json" -d "$commandsList" >/dev/null
+
+declare -a commandsList
+commandsList=("help=show commands list"
+              "ping=return pong"
+              "reboot=reboot bot server"
+              "shutdown=shut down bot server"
+              "restartme=restart motioneye.service"
+              "status=get system status"
+              "snapshot=get snapshots from all cameras"
+              "uptime=call uptime"
+              "df=call df -h"
+              "mdon=enable motion detection"
+              "mdoff=disable motion detection"
+              "setcommands=update commands at @BotFather")
+telegram.bot -bt "${BOT_TOKEN}" --set_commands "${commandsList[@]}"
 
 # start the bot loop for continuously checking for updates on the telegram channel
-telegram --quiet --icon $ICON_INFO --text "Awaiting orders!"
+telegram.bot -bt "${BOT_TOKEN}" -cid "${CHAT_ID}" -q --info --text "Awaiting orders\!"
 while :
 do
   # check for present devices and toggle md
@@ -171,7 +200,8 @@ do
   #checkDevicePresence
   # check if there is a new update on telegram
   # TODO getUpdates is not supported by telegram, it should be added
-  updateJSON=$( curl -s -X GET "https://api.telegram.org/bot$BOT_TOKEN/getUpdates?timeout=$TIMEOUT&offset=$nextUpdateId" )
+  #updateJSON=$( curl -s -X GET "https://api.telegram.org/bot$BOT_TOKEN/getUpdates?timeout=$TIMEOUT&offset=$nextUpdateId" )
+  updateJSON=$( telegram.bot -bt "${BOT_TOKEN}" -q --get_updates --timeout ${TIMEOUT} --offset ${nextUpdateId} )
   result=$( echo "${updateJSON}" | jq '.result' )
 
   if [ -n "${updateJSON}" ] && [ "${result}" != "[]" ]; then
@@ -207,27 +237,30 @@ do
 		/mdoff - disables motion detection on all cameras
 		/setcommands - sends the commands list to @BotFather
 TXTEOF
-          telegram --quiet --question  --title "help" --text "${helpText}"
+          telegram.bot -bt "${BOT_TOKEN}" -cid "${CHAT_ID}" -q --question --title "help" --text "${helpText}"
           ;;
         /ping)
-          telegram --quiet --icon $ICON_INFO --text "pong"
+          telegram.bot -bt "${BOT_TOKEN}" -cid "${CHAT_ID}" -q --info --text "pong"
           ;;
         /reboot)
-          telegram --quiet --icon $ICON_INFO --text "condocam.ai will reboot now"
+          telegram.bot -bt "${BOT_TOKEN}" -cid "${CHAT_ID}" -q --info --text "condocam\.ai will reboot now"
           sudo reboot -f
           ;;
         /shutdown)
-          telegram --quiet --icon $ICON_INFO --text "condocam.ai will shutdown now"
+          telegram.bot -bt "${BOT_TOKEN}" -cid "${CHAT_ID}" -q --info --text "condocam\.ai will shutdown now"
           sudo shutdown now
           ;;
         /restartme)
-          telegram --quiet --icon $ICON_INFO --text "motioneye.service will be restarted"
+          telegram.bot -bt "${BOT_TOKEN}" -cid "${CHAT_ID}" -q --info --text "motioneye\.service will be restarted"
           sudo systemctl restart motioneye.service
           ;;
         /status)
           motioneyeStatus=$( systemctl status motioneye.service | grep "^[ ]*Active" )
+          motioneyeStatus=$( escapeReservedCharacters "${motioneyeStatus}" )
           condocambotStatus=$( systemctl status condocambot.service | grep "^[ ]*Active" )
+          condocambotStatus=$( escapeReservedCharacters "${condocambotStatus}" )
           condocamDetectionStatus=$( systemctl status condocam_detection.service | grep "^[ ]*Active" )
+          condocamDetectionStatus=$( escapeReservedCharacters "${condocamDetectionStatus}" )
           i=1
           detectionStatus=""
           while [[ $i -le numOfCams ]] ; do
@@ -235,8 +268,8 @@ TXTEOF
             i=$((i+1))
           done
           cpuTemp=$( vcgencmd measure_temp | grep -oE '[0-9]*\.[0-9]*')"°C"
-          status="*motioneye.service:*\n${motioneyeStatus}\n*condocambot.service:*\n${condocambotStatus}\n*condocam_detection.service:*\n${condocamDetectionStatus}\n*number of cameras: *${numOfCams}${detectionStatus}\n*CPU temp: *$cpuTemp"
-          telegram --quiet --icon $ICON_INFO --title "status" --text "${status}"
+          status="*motioneye.service:*\n${motioneyeStatus}\n*condocambot.service:*\n${condocambotStatus}\n*condocam\_detection.service:*\n${condocamDetectionStatus}\n*number of cameras:* ${numOfCams}${detectionStatus}\n*CPU temp:* ${cpuTemp}"
+          telegram.bot -bt "${BOT_TOKEN}" -cid "${CHAT_ID}" -q --info --title "status" --text "${status}"
           ;;
         /snapshot)
           i=1
@@ -253,9 +286,9 @@ TXTEOF
               fi
             done # give the system some time to respond
             if [[ $j -ge 10 ]]; then
-                telegram --quiet --error --text "Could not get a snapshot from Camera${i}!"
+                telegram.bot -bt "${BOT_TOKEN}" -cid "${CHAT_ID}" -q --error --text "Could not get a snapshot from Camera${i}\!"
               else
-                telegram --quiet --photo "${CONDOCAM_IMAGE_FOLDER}/Camera${i}/lastsnap.jpg"
+                telegram.bot -bt "${BOT_TOKEN}" -cid "${CHAT_ID}" -q --photo "${CONDOCAM_IMAGE_FOLDER}/Camera${i}/lastsnap.jpg"
                 sleep 1
                 # the handling of the lastsnap.jpg link is weird, so it is better to remove the link
                 # in order to get a link to a new image the next time a snapshot is requested again
@@ -274,11 +307,11 @@ TXTEOF
           ;;
         /uptime)
           text=$( uptime )
-          telegram --quiet --icon $ICON_INFO --title "uptime" --text "${text}"
+          telegram.bot -bt "${BOT_TOKEN}" -cid "${CHAT_ID}" -q --info --title "uptime" --text "${text}"
           ;;
         /df)
           text=$( df -h )
-          telegram --quiet --icon $ICON_INFO --title "disk usage" --text "${text}"
+          telegram.bot -bt "${BOT_TOKEN}" -cid "${CHAT_ID}" -q --info --title "disk usage" --text "${text}"
           ;;
         /mdon | /mdoff | "/motiondetection "* | "/md "*)
           targetState=$( echo "${command}" | cut -d' ' -f2 )
@@ -290,22 +323,23 @@ TXTEOF
         /setcommands)
         # be carfull with the formatting of this. It took me a while to write the JSON in a format which gets accepted by @BotFather
           # setMyCommands is not supported by telegram
-          # TODO add it later to that
-          curl -s "https://api.telegram.org/bot$BOT_TOKEN/setMyCommands" -H "Content-Type: application/json" -d "$commandsList" >/dev/null
+          # TODO use telegram.bot
+          #curl -s "https://api.telegram.org/bot$BOT_TOKEN/setMyCommands" -H "Content-Type: application/json" -d "$commandsList" >/dev/null
+          telegram.bot -bt "${BOT_TOKEN}" --set_commands "${commandsList[@]}"
           ;;
         /start)
           # nothing to do, but it is a telegram bot default command, so I should catch it
-          telegram --quiet --icon $ICON_INFO --text "Awaiting orders!"
+          telegram.bot -bt "${BOT_TOKEN}" -cid "${CHAT_ID}" -q --info --text "Awaiting orders\!"
           ;;
         *)
-          telegram --quiet --icon $ICON_INFO --title "unknown command" --text "command \"${command}\" not understood"
+          telegram.bot -bt "${BOT_TOKEN}" -cid "${CHAT_ID}" -q --info --title "unknown command" --text "command \"${command}\" not understood"
           ;;
       esac
     else
       # unauthorized request
       attackCount=$((attackCount+1))
       if [ $attackCount -ge $attackLimit ]; then
-        telegram --quiet --error --title "ALARM" --text "I am receiving unauthorized requests. I am shutting myself down."
+        telegram.bot -bt "${BOT_TOKEN}" -cid "${CHAT_ID}" -q --error --title "ALARM" --text "I am receiving unauthorized requests\. I am shutting myself down\."
         sleep 5
         exit 0 # indicate no failure, so that the service does not get restarted
       fi
@@ -313,4 +347,4 @@ TXTEOF
   fi # else the getUpdate just timed out, start waiting again
 done
 # we should not end up here
-telegram --quiet --icon $ICON_WARN --text "I'm done for now! Service script exited."
+telegram.bot -bt "${BOT_TOKEN}" -cid "${CHAT_ID}" -q --warning --text "I'm done for now\! Service script exited\."

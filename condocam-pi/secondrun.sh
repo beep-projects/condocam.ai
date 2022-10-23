@@ -20,7 +20,7 @@
 #
 # This file will be called after the network has been configured by firstrun.sh
 # It updates the system, installs motioneye and configures all attached USB cameras
-# It also sets up telegram as command interface and activates people detection using OpenCV for the camera images
+# It also sets up telegram.bot as command interface and activates people detection using OpenCV for the camera images
 # This script downloads a lot of stuff, so it will take a while to run
 # For a full description see https://github.com/beep-projects/condocam.ai/readme.md
 #
@@ -79,8 +79,6 @@ BOT_TOKEN=COPY_BOT_TOKEN_HERE
 ENABLE_RASPAP=false
 # fixed configs
 SERVICE_FOLDER=/etc/systemd/system
-TELEGRAM_FOLDER=/etc/telegram
-TELEGRAM_CONF="${TELEGRAM_FOLDER}/telegram.conf"
 CONDOCAM_FOLDER=/etc/condocam
 CONDOCAM_IMAGE_FOLDER=/var/log/condocam/images
 CONDOCAMBOT_CONF="${CONDOCAM_FOLDER}/condocambot.conf"
@@ -94,8 +92,6 @@ echo "mkdir -p ${CONDOCAM_FOLDER}"
 sudo mkdir -p "${CONDOCAM_FOLDER}"
 echo "mkdir -p ${CONDOCAM_IMAGE_FOLDER}"
 sudo mkdir -p "${CONDOCAM_IMAGE_FOLDER}"
-echo "mkdir -p ${TELEGRAM_FOLDER}"
-sudo mkdir -p "${TELEGRAM_FOLDER}"
 
 # internet connectivity is required for installing required packages and updating the system
 waitForInternet
@@ -108,33 +104,38 @@ sudo apt install -y bc jq
 #setup the telegram bot
 echo "I am now setting up the telegram communication"
 # make sure that the telegram scrip uses the configured TELEGRAM_CONF
-sudo sed -i "s/^FILE_CONF=.*/FILE_CONF=${TELEGRAM_CONF//\//\\/}/" /boot/files/telegram
-sudo cp /boot/files/telegram.conf "${TELEGRAM_CONF}"
-sudo cp /boot/files/telegram /usr/local/sbin/telegram
-sudo chmod +x /usr/local/sbin/telegram
+#sudo sed -i "s/^FILE_CONF=.*/FILE_CONF=${TELEGRAM_CONF//\//\\/}/" /boot/files/telegram
+#sudo cp /boot/files/telegram.conf "${TELEGRAM_CONF}"
+#sudo cp /boot/files/telegram /usr/local/sbin/telegram
+#sudo chmod +x /usr/local/sbin/telegram
+wget https://github.com/beep-projects/telegram.bot/releases/download/v1.0.0/telegram.bot
+chmod 755 telegram.bot
+sudo ./telegram.bot --install
 
 echo "configuring telegram bot"
-echo "curl -X GET \"https://api.telegram.org/bot${BOT_TOKEN}/getUpdates\""
+echo "telegram.bot --get_updates --bottoken ${BOT_TOKEN}"
 # for this call to be successfull, there must be one new message in the bot chat, not older than 24h
-UPDATEJSON=$( curl -X GET "https://api.telegram.org/bot${BOT_TOKEN}/getUpdates" )
+UPDATEJSON=$( telegram.bot --get_updates --bottoken ${BOT_TOKEN} )
 echo "${UPDATEJSON}"
-# get the client_id for sending the messages to the created telegram bot
-CHAT_ID=$( echo "${UPDATEJSON}" | jq '.result | .[0].message.chat.id' )
 #get the information for the condocambot.conf
 LAST_UPDATE_ID=$( echo "${UPDATEJSON}" | jq '.result | .[0].update_id' )
-# note, the condocambot is not very picky, the sender of the first message it sees, will be the owner
-ADMIN_ID=$( echo "${UPDATEJSON}" | jq '.result | .[0].message.from.id' )
-ADMIN_IS_BOT=$( echo "${UPDATEJSON}" | jq '.result | .[0].message.from.is_bot' )
-ADMIN_FIRST_NAME=$( echo "${UPDATEJSON}" | jq '.result | .[0].message.from.first_name' )
-ADMIN_LANGUAGE_CODE=$( echo "${UPDATEJSON}" | jq '.result | .[0].message.from.language_code' )
+# get the client_id for sending the messages to the created telegram bot
+UPDATE_TYPE="message"
+if [[ $( echo "${UPDATEJSON}" | jq '.result | .[0].message' ) = "null" ]]; then
+  UPDATE_TYPE="my_chat_member"
+fi
 
-# write the configuration for the telegram bot
-sudo sed -i "s/api-key=.*/api-key=${BOT_TOKEN}/" "${TELEGRAM_CONF}"
-sudo sed -i "s/user-id=.*/user-id=${CHAT_ID}/" "${TELEGRAM_CONF}"
-telegram --success --text "telegram bot is installed successfully, continuing to install the rest of the system."
+CHAT_ID=$( echo "${UPDATEJSON}" | jq ".result | .[0].${UPDATE_TYPE}.chat.id" )
+# note, the condocambot is not very picky, the sender of the first message it sees, will be the owner
+ADMIN_ID=$( echo "${UPDATEJSON}" | jq ".result | .[0].${UPDATE_TYPE}.from.id" )
+ADMIN_IS_BOT=$( echo "${UPDATEJSON}" | jq ".result | .[0].${UPDATE_TYPE}.from.is_bot" )
+ADMIN_FIRST_NAME=$( echo "${UPDATEJSON}" | jq ".result | .[0].${UPDATE_TYPE}.from.first_name" )
+ADMIN_LANGUAGE_CODE=$( echo "${UPDATEJSON}" | jq ".result | .[0].${UPDATE_TYPE}.from.language_code" )
+
+telegram.bot --bottoken "${BOT_TOKEN}" --chatid "${CHAT_ID}" --success --text "telegram.bot is installed successfully, continuing to install the rest of the system."
 
 if [[ "${ARCH}" == "armv6l" ]]; then
-	telegram --warning --text "You are trying to run **condocam.ai** on an **armv6l** based system, which is **not** properly supported.\n
+	telegram.bot --bottoken "${BOT_TOKEN}" --chatid "${CHAT_ID}" --warning --text "You are trying to run **condocam.ai** on an **armv6l** based system, which is **not** properly supported.\n
 	Installation will continue, but **people detection** will not be enabled, because **OpenCV** has no packages available for this system and you might experience problems with **Motion** itself.\n
 	If you know how to fix these issue, please contribute to the project."
 fi
@@ -164,7 +165,7 @@ echo "ADMIN_LANGUAGE_CODE=${ADMIN_LANGUAGE_CODE}" | sudo tee -a "${CONDOCAMBOT_C
 sudo sed -i "s/^CONF_FILE=.*/CONF_FILE=${CONDOCAMBOT_CONF//\//\\/}/" /boot/files/condocambot.sh
 sudo sed -i "s/^CONDOCAM_IMAGE_FOLDER=.*/CONDOCAM_IMAGE_FOLDER=${CONDOCAM_IMAGE_FOLDER//\//\\/}/" /boot/files/condocambot.sh
 
-telegram --success --text "system is apt updated, next step is to install motion and motionEye"
+telegram.bot --bottoken "${BOT_TOKEN}" --chatid "${CHAT_ID}" --success --text "system is apt updated, next step is to install motion and motionEye"
 
 # just follow the guide on https://github.com/ccrisan/motioneye/wiki/Install-On-Raspbian to install motioneye
 
@@ -172,11 +173,10 @@ telegram --success --text "system is apt updated, next step is to install motion
 echo "installing motion and all dependencies"
 if [[ "${ARCH}" == "armv6l" ]]; then
 	wget https://github.com/Motion-Project/motion/releases/download/release-4.4.0/bullseye_motion_4.4.0-1_armhf.deb
-	sudo apt install -y ./pi_buster_motion_4.4.0-1_armhf.deb
+	sudo apt install -y ./bullseye_motion_4.4.0-1_armhf.deb
 else
-	#there is no 64 bit motion package in bullseye at the moment, so we have to use the old one from buster
-	wget https://github.com/Motion-Project/motion/releases/download/release-4.4.0/buster_motion_4.4.0-1_arm64.deb
-	sudo apt install -y ./buster_motion_4.4.0-1_arm64.deb
+	wget https://github.com/Motion-Project/motion/releases/download/release-4.4.0/bullseye_motion_4.4.0-1_arm64.deb
+	sudo apt install -y ./bullseye_motion_4.4.0-1_arm64.deb
 fi
 # Disable motion service, motionEye controls motion
 sudo systemctl stop motion
@@ -215,7 +215,7 @@ sudo pip install motioneye
 # sudo cp /usr/local/share/motioneye/extra/motioneye.conf.sample /etc/motioneye/motioneye.conf
 
 # find all connected USB cameras and add them to motioneye
-# Note: each cam creates two interfaces, the first one should be the video, the second one the meta data
+# Note: each camera creates two interfaces, the first one should be the video, the second one the meta data
 v4l2-ctl --list-devices
 USBCAMS=$( v4l2-ctl --list-devices | awk '/\(usb-/{getline; print}' )
 echo "USB cameras:"
@@ -290,10 +290,10 @@ sudo cp /boot/files/motioneye.conf "${CONDOCAM_FOLDER}/motioneye.conf"
 #sudo rm /boot/files/template-camera.conf
 
 if [[ "${ARCH}" == "armv6l" ]]; then
-	telegram --success --text "motion and motionEye are now installed, skipping now OpenCV, which is not supported by your system.
+	telegram.bot --bottoken "${BOT_TOKEN}" --chatid "${CHAT_ID}" --success --text "motion and motionEye are now installed, skipping now OpenCV, which is not supported by your system.
 	Without this, people detection will not work."
 else
-	telegram --success --text "motion and motionEye are now installed, next one up is OpenCV and its dependencies for enabling people detection"
+	telegram.bot --bottoken "${BOT_TOKEN}" --chatid "${CHAT_ID}" --success --text "motion and motionEye are now installed, next one up is OpenCV and its dependencies for enabling people detection"
 	echo "install python3 dependecies for people detection with OpenCV"
 	waitForApt
 	echo "sudo apt install -y libatlas-base-dev python3-pip openexr libgtk-3-dev"
@@ -342,16 +342,18 @@ sudo systemctl enable motioneye.service
 if [[ "${ARCH}" != "armv6l" ]]; then
 	sudo systemctl enable condocam_detection.service
 	#sudo systemctl start condocam_detection.service
+else
+	telegram.bot --bottoken "${BOT_TOKEN}" --chatid "${CHAT_ID}" --warning --text "condocam_detection.service is not enabled. Compile **python-opencv** on your pi and enable the service manually."
 fi
 
 
 if $ENABLE_RASPAP; then
   #install raspap
-  telegram --warning --text "I am installing now RaspAP, remember to secure this system after the setup is finished!"
+  telegram.bot --bottoken "${BOT_TOKEN}" --chatid "${CHAT_ID}" --warning --text "I am installing now RaspAP, remember to secure this system after the setup is finished!"
   curl -sL https://install.raspap.com | bash -s -- --yes
 fi
 
-telegram --success --text "All packages are installed now, I am just doing some clean up and then I will be available for you at http://${HOSTNAME}:8765"
+telegram.bot --bottoken "${BOT_TOKEN}" --chatid "${CHAT_ID}" --success --text "All packages are installed now, I am just doing some clean up and then I will be available for you at http://${HOSTNAME}:8765"
 
 echo "remove autoinstalled packages" 
 waitForApt
