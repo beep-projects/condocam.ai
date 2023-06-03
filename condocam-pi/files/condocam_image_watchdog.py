@@ -1,4 +1,4 @@
-# Copyright (c) 2021, The beep-projects contributors
+# Copyright (c) 2021-2023, The beep-projects contributors
 # this file originated from https://github.com/beep-projects
 # Do not remove the lines above.
 # This program is free software: you can redistribute it and/or modify
@@ -19,22 +19,29 @@
 The watchdog checks one folder for creation of jpeg files.
 If a new jpeg file is created, the watchdog triggers the obeject detection
 via MobileNetSSD DNN. If the object detection identifies persons, the
-image is sent via telegram-notify.
+image is sent via telegram.bot.
 """
 
 import numpy
 import argparse
 import cv2
 import imutils
+import configparser
 import time
 import queue
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import filetype
 from multiprocessing import Pool
+from multiprocessing import Lock
 import sys
 import multiprocessing
 import subprocess
+
+# globals
+BOT_TOKEN = None
+CHAT_ID = None
+LOCK = None
 
 class ImageDirectoryWatcher:  # pylint: disable=too-few-public-methods
   """Watchdog for a specified image directory.
@@ -43,13 +50,13 @@ class ImageDirectoryWatcher:  # pylint: disable=too-few-public-methods
   and hands the image paths over to processImage
 
   Attributes:
-  dirToWatch: Path to the image directory that should be watched
+  dir_to_watch: Path to the image directory that should be watched
   imagequeue: queue used for communication of created jpeg files to processImage
   """
 
-  def __init__(self, dirToWatch, imagequeue):
+  def __init__(self, dir_to_watch, imagequeue):
     """Inits the watchdog."""
-    self._dir_to_watch = dirToWatch
+    self._dir_to_watch = dir_to_watch
     self._image_queue = imagequeue
     self.observer = Observer()
 
@@ -99,7 +106,6 @@ class JPEGHandler(FileSystemEventHandler):
       # if it is an image, put it into the processing queue
       self._image_queue.put(event.src_path)
 
-
 def process_image(image_queue, confidence):
   """Inits the JPEGHandler.
 
@@ -107,7 +113,7 @@ def process_image(image_queue, confidence):
     image_queue: queue used for passing newly created jpeg files to process_image.
       The queue is checked regularily for new images. Once a new image is detected,
       it is put through the cv2.dnn MobileNetSSD for object detection
-      if a person is detected in the image, that image is sent out via telegram
+      if a person is detected in the image, that image is sent out via telegram.bot
     confidence: the minimum required confidence for accepting a detected person
       from the MobileNetSSD classification. Only if the confidence is higher
       than the given value, an alert will be triggert
@@ -123,17 +129,22 @@ def process_image(image_queue, confidence):
   ]
   # load the serialized model from disk
   net = cv2.dnn.readNetFromCaffe(prototxt, caffeemodel)
+
   while True:
     # check if there is an image in the queue and process it
     try:
+      # the synchronization on the queue seems not to work, so use lock to
+      # prevent two processes working on the same image
+      LOCK.acquire()
       image_path = image_queue.get()
+      LOCK.release()
     except queue.Empty:
       # if queue is empty, wait a while before the next iteration is done
       time.sleep(1)
       continue
-    # if the image is not fully written, cv2.imread() returnes None, 
+    # if the image is not fully written, cv2.imread() returnes None,
     # so give the system some time to finish
-    time.sleep(0.1)  
+    time.sleep(0.1)
     # load the input image and construct an input blob for the image
     # by resizing to fit the blob_size and then normalizing it
     # (note: normalization is done via the authors of the MobileNet SSD
@@ -141,7 +152,7 @@ def process_image(image_queue, confidence):
     image = cv2.imread(image_path)
     if image is None:
       # if the image could not be read, continue with next iteration
-      continue 
+      continue
     image2 = None
     if image.shape[0] > image.shape[1]:
       image2 = imutils.resize(image, height=min(blob_size, image.shape[0]))
@@ -167,11 +178,28 @@ def process_image(image_queue, confidence):
           break
 
     if person_detected:
-      subprocess.run(["telegram", "--quiet", "--photo", image_path], check=False)
+      subprocess.run(["telegram.bot", "-bt", BOT_TOKEN, "-cid", CHAT_ID,
+                                      "--quiet", "--photo", image_path], check=False)
+
+def init_pool_processes(global_lock):
+  """Initialize each process with a global variable lock.
+  """
+  global LOCK
+  LOCK = global_lock
 
 def main():
   """main function, starts the image directory watchdog, the image processing process pool
     and sets up the queue used for communication between these modules"""
+  # read the config
+  parser = configparser.ConfigParser()
+  # hack, because ConfigParser requires sections, so we add one
+  with open("/etc/condocam/condocambot.conf") as stream:
+    parser.read_string("[fakesection]\n" + stream.read())
+  global BOT_TOKEN
+  BOT_TOKEN = parser["fakesection"]["BOT_TOKEN"]
+  global CHAT_ID
+  CHAT_ID = parser["fakesection"]["CHAT_ID"]
+
   # construct the argument parser and parse the arguments
   ap = argparse.ArgumentParser()
   ap.add_argument(
@@ -195,12 +223,14 @@ def main():
   watchdog.daemon = True
   watchdog.start()
   # start the image processing threads
+  # use all available cores except one
+  # this should keep the system responsive if many images are detected at once
   pool_size = multiprocessing.cpu_count()
   if pool_size > 1:
     pool_size -= 1
-  # use all available cores except one for the rest of the system
-  # this should keep the system responsive if many images are saved at once
-  with Pool(pool_size) as pool:
+  # initialize the lock used for image_queue access and pass it to each process via the initializer
+  lock = Lock()
+  with Pool(pool_size, initializer=init_pool_processes, initargs=(lock,)) as pool:
     arguments = []
     for _ in range(pool_size):
       arguments.append((image_queue, confidence))

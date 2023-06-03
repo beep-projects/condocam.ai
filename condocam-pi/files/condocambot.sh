@@ -268,7 +268,7 @@ TXTEOF
             i=$((i+1))
           done
           cpuTemp=$( vcgencmd measure_temp | grep -oE '[0-9]*\.[0-9]*')"°C"
-          status="*motioneye.service:*\n${motioneyeStatus}\n*condocambot.service:*\n${condocambotStatus}\n*condocam\_detection.service:*\n${condocamDetectionStatus}\n*number of cameras:* ${numOfCams}${detectionStatus}\n*CPU temp:* ${cpuTemp}"
+          status="*motioneye\.service:*\n${motioneyeStatus}\n*condocambot\.service:*\n${condocambotStatus}\n*condocam\_detection\.service:*\n${condocamDetectionStatus}\n*number of cameras:* ${numOfCams}${detectionStatus}\n*CPU temp:* ${cpuTemp}"
           telegram.bot -bt "${BOT_TOKEN}" -cid "${CHAT_ID}" -q --info --title "status" --text "${status}"
           ;;
         /snapshot)

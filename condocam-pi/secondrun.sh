@@ -108,7 +108,7 @@ echo "I am now setting up the telegram communication"
 #sudo cp /boot/files/telegram.conf "${TELEGRAM_CONF}"
 #sudo cp /boot/files/telegram /usr/local/sbin/telegram
 #sudo chmod +x /usr/local/sbin/telegram
-wget https://github.com/beep-projects/telegram.bot/releases/download/v1.0.0/telegram.bot
+wget https://github.com/beep-projects/telegram.bot/releases/latest/download/telegram.bot
 chmod 755 telegram.bot
 sudo ./telegram.bot --install
 
@@ -116,7 +116,9 @@ echo "configuring telegram bot"
 echo "telegram.bot --get_updates --bottoken ${BOT_TOKEN}"
 # for this call to be successfull, there must be one new message in the bot chat, not older than 24h
 UPDATEJSON=$( telegram.bot --get_updates --bottoken ${BOT_TOKEN} )
+echo "---------------"
 echo "${UPDATEJSON}"
+echo "---------------"
 #get the information for the condocambot.conf
 LAST_UPDATE_ID=$( echo "${UPDATEJSON}" | jq '.result | .[0].update_id' )
 # get the client_id for sending the messages to the created telegram bot
@@ -132,12 +134,12 @@ ADMIN_IS_BOT=$( echo "${UPDATEJSON}" | jq ".result | .[0].${UPDATE_TYPE}.from.is
 ADMIN_FIRST_NAME=$( echo "${UPDATEJSON}" | jq ".result | .[0].${UPDATE_TYPE}.from.first_name" )
 ADMIN_LANGUAGE_CODE=$( echo "${UPDATEJSON}" | jq ".result | .[0].${UPDATE_TYPE}.from.language_code" )
 
-telegram.bot --bottoken "${BOT_TOKEN}" --chatid "${CHAT_ID}" --success --text "telegram.bot is installed successfully, continuing to install the rest of the system."
+telegram.bot --bottoken "${BOT_TOKEN}" --chatid "${CHAT_ID}" --success --text "telegram\.bot is installed successfully, continuing to install the rest of the system\."
 
 if [[ "${ARCH}" == "armv6l" ]]; then
-	telegram.bot --bottoken "${BOT_TOKEN}" --chatid "${CHAT_ID}" --warning --text "You are trying to run **condocam.ai** on an **armv6l** based system, which is **not** properly supported.\n
+	telegram.bot --bottoken "${BOT_TOKEN}" --chatid "${CHAT_ID}" --warning --text "You are trying to run **condocam.ai** on an **armv6l** based system, which is **not** properly supported\.\n
 	Installation will continue, but **people detection** will not be enabled, because **OpenCV** has no packages available for this system and you might experience problems with **Motion** itself.\n
-	If you know how to fix these issue, please contribute to the project."
+	If you know how to fix these issue, please contribute to the project\."
 fi
 
 # now we want to update the system and install packages
@@ -172,11 +174,11 @@ telegram.bot --bottoken "${BOT_TOKEN}" --chatid "${CHAT_ID}" --success --text "s
 # install motion and all dependencies
 echo "installing motion and all dependencies"
 if [[ "${ARCH}" == "armv6l" ]]; then
-	wget https://github.com/Motion-Project/motion/releases/download/release-4.4.0/bullseye_motion_4.4.0-1_armhf.deb
-	sudo apt install -y ./bullseye_motion_4.4.0-1_armhf.deb
+	wget https://github.com/Motion-Project/motion/releases/download/release-4.5.1/pi_bullseye_motion_4.5.1-1_armhf.deb
+	sudo apt install -y ./pi_bullseye_motion_4.5.1-1_armhf.deb
 else
-	wget https://github.com/Motion-Project/motion/releases/download/release-4.4.0/bullseye_motion_4.4.0-1_arm64.deb
-	sudo apt install -y ./bullseye_motion_4.4.0-1_arm64.deb
+	wget https://github.com/Motion-Project/motion/releases/download/release-4.5.1/bullseye_motion_4.5.1-1_arm64.deb
+	sudo apt install -y ./bullseye_motion_4.5.1-1_arm64.deb
 fi
 # Disable motion service, motionEye controls motion
 sudo systemctl stop motion
@@ -290,8 +292,8 @@ sudo cp /boot/files/motioneye.conf "${CONDOCAM_FOLDER}/motioneye.conf"
 #sudo rm /boot/files/template-camera.conf
 
 if [[ "${ARCH}" == "armv6l" ]]; then
-	telegram.bot --bottoken "${BOT_TOKEN}" --chatid "${CHAT_ID}" --success --text "motion and motionEye are now installed, skipping now OpenCV, which is not supported by your system.
-	Without this, people detection will not work."
+	telegram.bot --bottoken "${BOT_TOKEN}" --chatid "${CHAT_ID}" --success --text "motion and motionEye are now installed, skipping now OpenCV, which is not supported by your system\.
+	Without this, people detection will not work\."
 else
 	telegram.bot --bottoken "${BOT_TOKEN}" --chatid "${CHAT_ID}" --success --text "motion and motionEye are now installed, next one up is OpenCV and its dependencies for enabling people detection"
 	echo "install python3 dependecies for people detection with OpenCV"

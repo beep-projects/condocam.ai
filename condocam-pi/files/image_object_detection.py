@@ -1,4 +1,4 @@
-# Copyright (c) 2021, The beep-projects contributors
+# Copyright (c) 2021-2023, The beep-projects contributors
 # this file originated from https://github.com/beep-projects
 # Do not remove the lines above.
 # This program is free software: you can redistribute it and/or modify
@@ -28,7 +28,8 @@ ap = argparse.ArgumentParser()
 ap.add_argument("-f", "--folder", required=True, help="path to images directory")
 #ap.add_argument('-p', '--prototxt', required=True, help='path to Caffe deploy prototxt file')
 ##ap.add_argument('-m', '--model', required=True, help='path to the Caffe pre-trained model')
-ap.add_argument("-c", "--confidence", type=float, default=0.2, help="minimum probability to filter weak detections")
+ap.add_argument("-c", "--confidence", type=float, default=0.2,
+                                      help="minimum probability to filter weak detections")
 args = vars(ap.parse_args())
 
 PROTOTXT="MobileNetSSD_deploy.prototxt.txt"
@@ -42,7 +43,7 @@ CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
            "bottle", "bus", "car", "cat", "chair", "cow", "diningtable",
            "dog", "horse", "motorbike", "person", "pottedplant", "sheep",
            "sofa", "train", "tvmonitor"]
-           
+
 #CLASSES = ('background',
 #           'person'
 #           # ,'face'
@@ -56,8 +57,19 @@ CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
 #    'cow', 'diningtable', 'dog', 'horse',
 #    'motorbike', 'person', 'pottedplant',
 #    'sheep', 'sofa', 'train', 'tvmonitor')
-    
-#CLASSES = ('person bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat', 'traffic', 'light', 'fire', 'hydrant', 'stop', 'sign', 'parking', 'meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe', 'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee', 'skis', 'snowboard', 'sports', 'ball', 'kite', 'baseball', 'bat', 'baseball', 'glove', 'skateboard', 'surfboard', 'tennis', 'racket', 'bottle', 'wine', 'glass', 'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange', 'broccoli', 'carrot', 'hot', 'dog', 'pizza', 'donut', 'cake', 'chair', 'couch', 'potted', 'plant', 'bed', 'dining', 'table', 'toilet', 'tv', 'laptop', 'mouse', 'remote', 'keyboard', 'cell', 'phone', 'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy', 'bear', 'hair', 'drier', 'toothbrush')
+
+#CLASSES = ('person bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck',
+#           'boat', 'traffic', 'light', 'fire', 'hydrant', 'stop', 'sign', 'parking',
+#           'meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant',
+#           'bear', 'zebra', 'giraffe', 'backpack', 'umbrella', 'handbag', 'tie', 'suitcase',
+#           'frisbee', 'skis', 'snowboard', 'sports', 'ball', 'kite', 'baseball', 'bat',
+#           'baseball', 'glove', 'skateboard', 'surfboard', 'tennis', 'racket', 'bottle',
+#           'wine', 'glass', 'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple',
+#           'sandwich', 'orange', 'broccoli', 'carrot', 'hot', 'dog', 'pizza', 'donut',
+#           'cake', 'chair', 'couch', 'potted', 'plant', 'bed', 'dining', 'table', 'toilet',
+#           'tv', 'laptop', 'mouse', 'remote', 'keyboard', 'cell', 'phone', 'microwave', 'oven',
+#           'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy',
+#           'bear', 'hair', 'drier', 'toothbrush')
 
 COLORS = np.random.uniform(0, 255, size=(len(CLASSES), 3))
 
@@ -85,11 +97,12 @@ for imagePath in paths.list_images(args["folder"]):
   image2 = imutils.resize(image, width=min(480, image.shape[1]))
 
   start_time = time.time()
-  #blob = cv2.dnn.blobFromImage(cv2.resize(image, (width, height), interpolation = cv2.INTER_AREA), 0.007843, (width, height), 127.5)
+  #blob = cv2.dnn.blobFromImage(cv2.resize(image, (width, height), interpolation = cv2.INTER_AREA),
+  #                             0.007843, (width, height), 127.5)
   blob = cv2.dnn.blobFromImage(image2, 0.007843, (image2.shape[1], image2.shape[0]), 127.5)
 
   # pass the blob through the neural network
-  print('[INFO] computing object detection...')
+  print("[INFO] computing object detection...")
   net.setInput(blob)
   detections = net.forward()
   print("--- detection duration %s seconds ---" % (time.time() - start_time))
@@ -99,22 +112,22 @@ for imagePath in paths.list_images(args["folder"]):
     confidence = detections[0, 0, i, 2]
 
     # filter out weak detections by ensuring the 'confidence' is greater than the minimum confidence
-    if confidence > args['confidence']:
+    if confidence > args["confidence"]:
       # extract the index of the classes label from the 'detections',
       # then compute the (x, y)-coordinates of the bounding box for the object
       idx = int(detections[0, 0, i, 1])
       #if CLASSES[idx] == "person":
       if True:
         box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
-        (startX, startY, endX, endY) = box.astype('int')
+        (startX, startY, endX, endY) = box.astype("int")
 
         # display the prediction
-        label = '{}: {:.2f}%'.format(CLASSES[idx], confidence * 100)
-        print('[INFO] {}'.format(label))
+        label = "{}: {:.2f}%".format(CLASSES[idx], confidence * 100)
+        print("[INFO] {}".format(label))
         cv2.rectangle(image, (startX, startY), (endX, endY), COLORS[idx], 2)
         y = startY - 15 if startY - 15 > 15 else startY + 15
         cv2.putText(image, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[idx], 2)
 
         # show the output image
-        cv2.imshow('Output', image)
+        cv2.imshow("Output", image)
         cv2.waitKey(0)
