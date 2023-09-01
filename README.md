@@ -66,9 +66,6 @@ I use this setup for small mobile homes. One camera is enough to overlook the do
 
 ## <a name="directory-structure"/>Directory Structure
 
-````
-## Directory Structure of this Project
-
 ```
     ├── condocam-pi             # this folder holds all files that will be copied over to the Raspberry Pi
     │   ├── files               # all files which are required to run condocam.ai. These are all the configuration files
@@ -88,7 +85,6 @@ I use this setup for small mobile homes. One camera is enough to overlook the do
     ├── LICENSE                 # License for using and editing this software
     └── readme.md               # This file
 ```
-````
 
 ## <a name="installation"/>Installation
 
