@@ -13,6 +13,7 @@ This project is based on the work from following other projects:
 - [RaspAP](https://raspap.com/) for setting up a mobile hot spot on the **condocam.ai** (only set this up if you know how to secure a Raspberry Pi!)
 - [OpenCV](https://opencv.org/) with a trained [MobileNetSSD](https://github.com/nikmart/pi-object-detection) model for [people detection](https://www.pyimagesearch.com/2017/10/16/raspberry-pi-deep-learning-object-detection-with-opencv/)
 - [telegram.bot](https://github.com/beep-projects/telegram.bot) for sending messages via [Telegram](https://telegram.org/apps)
+- [LiStaBot](https://github.com/beep-projects/LiStaBot) for providing system information and alerts if the sd card get's filled up
 
 ## Content
 
@@ -164,8 +165,6 @@ For Linux I provide a script that downloads Raspberry Pi OS and flashes it onto 
 
 5. Eject the Micro SD card and insert it into your Raspberry Pi
 
-6. Connect the Raspberry Pi with an Ethernet cable to your Paradigma SystaComfort
-
 7. Power up the Raspberry Pi
 
 8. Wait a while (~10-45 minutes, depending on the number of system updates available) 
@@ -282,20 +281,43 @@ For Linux I provide a script that downloads Raspberry Pi OS and flashes it onto 
 
 ## <a name="bot-commands" />Bot commands
 
-The script `condocambot.sh` is used for communication between you and your bot. During installation the following commands are registered at @BotFather
+The script `condocambot.sh` is used for communication between you and your bot. During startup the following commands are registered at @BotFather
 
 ```
-/help - show commands list
-/ping - return pong
-/reboot - reboot bot server
-/shutdown - shut down bot server
-/restartme - restart motioneye.service
-/status - get system status
-/snapshot - get snapshots from all cameras
-/uptime - call uptime
-/df - call df -h
-/mdon - enable motion detection
-/mdoff - disable motion detection
-/setcommands - update commands at @BotFather
+/mdon - enables motion detection on all cameras
+/mdoff - disables motion detection on all cameras
+/snapshot - gets snapshots from all cameras
+/servicestatus - returns the status of the services
+/systemstatus - returns the system status
+/gcl - get CPU load Top 5
+/gru - get RAM usage Top 5
+/uptime - returns the results of the _uptime_ command on the bot server
+/df - returns the result of _df -h_ on the bot server
+/getconfig - get the content of listabot.conf
+   Short /gconf
+/restartme - restarts the motioneye.service
+/restartbot - restarts the condocambot.service
+/reboot - reboot the bot server
+/shutdown - shut down the bot server
+/help - shows this info
+/setcommands - sends the commands list to @BotFather
 ```
-
+In addition to the commands in the quick menu, there are more commands available. Commands with parameters cannot be added to the quick menu, so you have to enter them manually. To make your life easier, all commands have a three letter short code
+```
+/setdisklimit [VALUE] - set the alert threshold for disk usage to [VALUE] percent. Only integers allowed. 
+   Short /sdl
+/setcpulimit [VALUE] - set the alert threshold for cpu usage to [VALUE] percent. Only integers allowed.
+   Short /scl
+/setramlimit [VALUE] - set the alert threshold for ram usage to [VALUE] percent. Only integers allowed.
+   Short /srl
+/setcheckinterval [VALUE] - set the time interval in which the watchdog checks the limits to [VALUE] seconds.
+   Short /sci
+/getcpuloadtopx [VALUE1] [VALUE2]- get the [VALUE1] processes causing the highest CPU load. 
+   If omitted, [VALUE1] defaults to 5. You can pass [VALUE2] to set the line width of the output.
+   [VALUE2] defaults to 120.
+   Short /gcl
+/getramusagetopx [VALUE1] [VALUE2] - get the [VALUE1] processes having the highest RAM usage.
+   If omitted, [VALUE1] defaults to 5. You can pass [VALUE2] to set the line width of the output.
+   [VALUE2] defaults to 120.
+   Short /gru
+```

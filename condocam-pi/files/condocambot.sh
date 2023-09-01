@@ -247,28 +247,28 @@ do
 		/snapshot - gets snapshots from all cameras
 		/servicestatus - returns the status of the services
 		/systemstatus - returns the system status
-                /gcl - get CPU load Top 5
-                /gru - get RAM usage Top 5
+    /gcl - get CPU load Top 5
+    /gru - get RAM usage Top 5
 		/uptime - returns the results of the _uptime_ command on the bot server
 		/df - returns the result of _df -h_ on the bot server
-                /getconfig - get the content of listabot.conf
-                    Short /gconf
-                /setdisklimit [VALUE] - set the alert threshold for disk usage to [VALUE] percent. Only integers allowed. 
-                    Short /sdl
-                /setcpulimit [VALUE] - set the alert threshold for cpu usage to [VALUE] percent. Only integers allowed.
-                    Short /scl
-                /setramlimit [VALUE] - set the alert threshold for ram usage to [VALUE] percent. Only integers allowed.
-                    Short /srl
-                /setcheckinterval [VALUE] - set the time interval in which the watchdog checks the limits to [VALUE] seconds.
-                    Short /sci
-                /getcpuloadtopx [VALUE1] [VALUE2]- get the [VALUE1] processes causing the highest CPU load. 
-                    If omitted, [VALUE1] defaults to 5. You can pass [VALUE2] to set the line width of the output.
-                    [VALUE2] defaults to 120.
-                    Short /gcl
-               /getramusagetopx [VALUE1] [VALUE2] - get the [VALUE1] processes having the highest RAM usage.
-                    If omitted, [VALUE1] defaults to 5. You can pass [VALUE2] to set the line width of the output.
-                    [VALUE2] defaults to 120.
-                    Short /gru
+    /getconfig - get the content of listabot.conf
+        Short /gconf
+    /setdisklimit [VALUE] - set the alert threshold for disk usage to [VALUE] percent. Only integers allowed. 
+        Short /sdl
+    /setcpulimit [VALUE] - set the alert threshold for cpu usage to [VALUE] percent. Only integers allowed.
+        Short /scl
+    /setramlimit [VALUE] - set the alert threshold for ram usage to [VALUE] percent. Only integers allowed.
+        Short /srl
+    /setcheckinterval [VALUE] - set the time interval in which the watchdog checks the limits to [VALUE] seconds.
+        Short /sci
+    /getcpuloadtopx [VALUE1] [VALUE2]- get the [VALUE1] processes causing the highest CPU load. 
+        If omitted, [VALUE1] defaults to 5. You can pass [VALUE2] to set the line width of the output.
+        [VALUE2] defaults to 120.
+        Short /gcl
+    /getramusagetopx [VALUE1] [VALUE2] - get the [VALUE1] processes having the highest RAM usage.
+        If omitted, [VALUE1] defaults to 5. You can pass [VALUE2] to set the line width of the output.
+        [VALUE2] defaults to 120.
+        Short /gru
 		/restartme - restarts the motioneye.service
 		/restartbot - restarts the condocambot.service
 		/reboot - reboot the bot server
