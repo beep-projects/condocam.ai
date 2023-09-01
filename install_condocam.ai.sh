@@ -19,7 +19,46 @@
 # bash install_condocam.ai.sh ;
 # or pass the path of the sdcard
 # bash install_condocam.ai.sh /dev/mmcblk0 ;
- 
+
+#######################################
+# Print error message.
+# Globals:
+#   None
+# Arguments:
+#   $1 = Error message
+#   $2 = return code (optional, default 1)
+# Outputs:
+#   Prints an error message to stderr
+#######################################
+function error() {
+    printf "%s\n" "${1}" >&2 ## Send message to stderr.
+    exit "${2-1}" ## Return a code specified by $2, or 1 by default.
+}
+
+#######################################
+# Checks if internet can be accessed
+# and waits until they become available. 
+# Warning, you might get stuck forever in here
+# Globals:
+#   None
+# Arguments:
+#   None
+# Outputs:
+#   None
+#######################################
+function waitForInternet() {
+  until nc -zw1 google.com 443 >/dev/null 2>&1;  do
+    #wget should be available on most Linux distributions
+    if wget -q --spider http://google.com; then
+      break # we are online
+    else
+      #we are still offline
+      echo ["$(date +%T)"] waiting for internet access ...
+      sleep 1
+    fi
+  done
+}
+
 echo 
 echo "=============================================================="
 echo " WARNING  WARNING  WARNING  WARNING  WARNING  WARNING  WARNING"
@@ -76,8 +115,7 @@ echo
 DISKNAME=$( echo "${SD_CARD_PATH}" | rev | cut -d "/" -f 1 | rev )
 
 if ! lsblk | grep -q "${DISKNAME}" ; then
-  echo "FAIL: Disk with name ${DISKNAME} not found, exiting"
-  exit
+  error "FAIL: Disk with name ${DISKNAME} not found, exiting"
 fi
 
 echo "CHECK OK: Disk with name ${DISKNAME} exists"
@@ -85,8 +123,7 @@ echo "CHECK OK: Disk with name ${DISKNAME} exists"
 if [ -b "${SD_CARD_PATH}" ]; then
   echo "CHECK OK: Path ${SD_CARD_PATH} exists"
 else
-  echo "FAIL: SD card at ${SD_CARD_PATH} not found, exiting"
-  exit;
+  error "FAIL: SD card at ${SD_CARD_PATH} not found, exiting"
 fi
 
 #show available disks for final check
@@ -149,8 +186,7 @@ else
   echo "checking hash value of image file"
   HASH_OK=$( sha256sum -c "${RPI_IMAGE_HASH}" | grep "${RPI_IMAGE_XZ}: OK" )
   if [ -z "${HASH_OK}" ]; then
-    echo "hash does not match, aborting"
-    exit
+    error "hash does not match, aborting"
   else
     echo "hash is ok"
   fi
@@ -261,23 +297,61 @@ sed -i "/hdmi_force_hotplug=/c\hdmi_force_hotplug=1" "${RPI_PATH}/config.txt"
 
 echo 
 echo "=============================================================="
+echo " setup telegram bot!"
+echo "=============================================================="
+echo 
+
+echo "BEFORE you continue, send /start to your telegram bot!"
+echo "This script will get stuck in an endless loop, if you don't do it ..."
+echo 
+#######################################
+# Try to obtain the chat_id from messages with command /start.
+#######################################
+BOT_TOKEN=$( grep "^BOT_TOKEN=" condocam-pi/firstrun.sh | cut -d "=" -f 2 )
+if [[ ! ${BOT_TOKEN} =~ ^[0-9]{8,10}:[0-9a-zA-Z_-]{35}$ ]]; then
+  error "\"${BOT_TOKEN}\" does not seem to be a valid bot token. Please correct your entry in condocam-pi/firstrun.sh."
+fi
+CURL_RESULT=$(curl --silent --insecure "https://api.telegram.org/bot${BOT_TOKEN}/getMe")
+echo "${CURL_RESULT}" | grep '"ok":true' > /dev/null || { error "Your bot token could not be validated. Reason: ${CURL_RESULT}. Please correct your entry in condocam-pi/firstrun.sh"; }
+
+update_json=""
+while [[ -z "${CHAT_ID}" ]] || [[ -z "${ADMIN_ID}" ]] || [[ -z "${ADMIN_IS_BOT}" ]] || [[ -z "${ADMIN_FIRST_NAME}" ]] || [[ -z "${ADMIN_LANGUAGE_CODE}" ]] || [[ -z "${LAST_UPDATE_ID}" ]]; do
+  update_json=$( telegram.bot --get_updates --bottoken "${BOT_TOKEN}" )
+ 	UPDATE_TYPE="message" # direct message
+	if [[ $( echo "${UPDATEJSON}" | jq '.result | .[0].message' ) = "null" ]]; then
+	  UPDATE_TYPE="my_chat_member" # message via group
+	fi
+
+  CHAT_ID=$( echo "${update_json}" | jq ".result | [.[].${UPDATE_TYPE} | select(.text==\"/start\")][-1].chat.id" )
+  ADMIN_ID=$( echo "${update_json}" | jq ".result | [.[].${UPDATE_TYPE} | select(.text==\"/start\")][-1].from.id" )
+  ADMIN_IS_BOT=$( echo "${update_json}" | jq ".result | [.[].${UPDATE_TYPE} | select(.text==\"/start\")][-1].from.is_bot" )
+  ADMIN_FIRST_NAME=$( echo "${update_json}" | jq ".result | [.[].${UPDATE_TYPE} | select(.text==\"/start\")][-1].from.first_name" )
+  ADMIN_LANGUAGE_CODE=$( echo "${update_json}" | jq ".result | [.[].${UPDATE_TYPE} | select(.text==\"/start\")][-1].from.language_code" )
+  LAST_UPDATE_ID=$( echo "${update_json}" | jq ".result | [select(.[].${UPDATE_TYPE}.text==\"/start\")][] | .[-1].update_id" )
+  
+  if [[ -z "${CHAT_ID}" ]] || [[ -z "${ADMIN_ID}" ]] || [[ -z "${LAST_UPDATE_ID}" ]]; then
+    echo "please send /start to bot #${BOT_TOKEN}, I am still waiting ..."
+    sleep 10
+  else #TODO check the globals for these files
+    printf "CHAT_ID: %s, ADMIN_ID: %s, LAST_UPDATE_ID: %s\n" "$CHAT_ID" "$ADMIN_ID" "$LAST_UPDATE_ID"
+    sed -i "s/^CHAT_ID=.*/CHAT_ID=$CHAT_ID/" condocam-pi/secondrun.sh
+    sed -i "s/^ADMIN_ID=.*/ADMIN_ID=$ADMIN_ID/" condocam-pi/secondrun.sh
+    sed -i "s/^ADMIN_IS_BOT=.*/ADMIN_IS_BOT=$ADMIN_IS_BOT/" condocam-pi/secondrun.sh
+    sed -i "s/^ADMIN_FIRST_NAME=.*/ADMIN_FIRST_NAME=$ADMIN_FIRST_NAME/" condocam-pi/secondrun.sh
+    sed -i "s/^ADMIN_LANGUAGE_CODE=.*/ADMIN_LANGUAGE_CODE=$ADMIN_LANGUAGE_CODE/" condocam-pi/secondrun.sh
+    sed -i "s/^LAST_UPDATE_ID=.*/LAST_UPDATE_ID=$LAST_UPDATE_ID/" condocam-pi/secondrun.sh
+    break
+  fi
+done
+
+echo 
+echo "=============================================================="
 echo " unmount SD card"
 echo "=============================================================="
 echo 
 
 echo "unmount SD card"
 sudo umount "${RPI_PATH}"
-
-echo 
-echo "=============================================================="
-echo " setup telegram bot!"
-echo "=============================================================="
-echo 
-
-echo "BEFORE you continue, send any message to your telegram bot!"
-echo "Then press any key to continue..."
-read -rn 1 -s
-echo
 echo "all work is done. Please insert the SD card into your raspberry pi"
 echo "NOTE: when starting up, your raspberry pi should reboot 4 times until all setup work is finished and condocam.ai is up and running. Be patient!"
 

@@ -77,6 +77,15 @@ echo "START secondrun.sh"
 # the following variables should be set by firstrun.sh
 BOT_TOKEN=COPY_BOT_TOKEN_HERE
 ENABLE_RASPAP=false
+
+# the following variables are filled by the install script, or later by this script
+CHAT_ID=""
+ADMIN_ID=""
+ADMIN_IS_BOT=""
+ADMIN_FIRST_NAME=""
+ADMIN_LANGUAGE_CODE=""
+LAST_UPDATE_ID=""
+
 # fixed configs
 SERVICE_FOLDER=/etc/systemd/system
 CONDOCAM_FOLDER=/etc/condocam
@@ -113,26 +122,29 @@ chmod 755 telegram.bot
 sudo ./telegram.bot --install
 
 echo "configuring telegram bot"
-echo "telegram.bot --get_updates --bottoken ${BOT_TOKEN}"
-# for this call to be successfull, there must be one new message in the bot chat, not older than 24h
-UPDATEJSON=$( telegram.bot --get_updates --bottoken ${BOT_TOKEN} )
-echo "---------------"
-echo "${UPDATEJSON}"
-echo "---------------"
-#get the information for the condocambot.conf
-LAST_UPDATE_ID=$( echo "${UPDATEJSON}" | jq '.result | .[0].update_id' )
-# get the client_id for sending the messages to the created telegram bot
-UPDATE_TYPE="message"
-if [[ $( echo "${UPDATEJSON}" | jq '.result | .[0].message' ) = "null" ]]; then
-  UPDATE_TYPE="my_chat_member"
-fi
 
-CHAT_ID=$( echo "${UPDATEJSON}" | jq ".result | .[0].${UPDATE_TYPE}.chat.id" )
-# note, the condocambot is not very picky, the sender of the first message it sees, will be the owner
-ADMIN_ID=$( echo "${UPDATEJSON}" | jq ".result | .[0].${UPDATE_TYPE}.from.id" )
-ADMIN_IS_BOT=$( echo "${UPDATEJSON}" | jq ".result | .[0].${UPDATE_TYPE}.from.is_bot" )
-ADMIN_FIRST_NAME=$( echo "${UPDATEJSON}" | jq ".result | .[0].${UPDATE_TYPE}.from.first_name" )
-ADMIN_LANGUAGE_CODE=$( echo "${UPDATEJSON}" | jq ".result | .[0].${UPDATE_TYPE}.from.language_code" )
+if [[ -z "${CHAT_ID}" ]] || [[ -z "${ADMIN_ID}" ]] || [[ -z "${LAST_UPDATE_ID}" ]]; then
+	echo "telegram.bot --get_updates --bottoken ${BOT_TOKEN}"
+	# for this call to be successfull, there must be one new message in the bot chat, not older than 24h
+	UPDATEJSON=$( telegram.bot --get_updates --bottoken ${BOT_TOKEN} )
+	echo "---------------"
+	echo "${UPDATEJSON}"
+	echo "---------------"
+	#get the information for the condocambot.conf
+	LAST_UPDATE_ID=$( echo "${UPDATEJSON}" | jq '.result | .[0].update_id' )
+	# get the client_id for sending the messages to the created telegram bot
+	UPDATE_TYPE="message"
+	if [[ $( echo "${UPDATEJSON}" | jq '.result | .[0].message' ) = "null" ]]; then
+	  UPDATE_TYPE="my_chat_member"
+	fi
+
+	CHAT_ID=$( echo "${UPDATEJSON}" | jq ".result | .[0].${UPDATE_TYPE}.chat.id" )
+	# note, the condocambot is not very picky, the sender of the first message it sees, will be the owner
+	ADMIN_ID=$( echo "${UPDATEJSON}" | jq ".result | .[0].${UPDATE_TYPE}.from.id" )
+	ADMIN_IS_BOT=$( echo "${UPDATEJSON}" | jq ".result | .[0].${UPDATE_TYPE}.from.is_bot" )
+	ADMIN_FIRST_NAME=$( echo "${UPDATEJSON}" | jq ".result | .[0].${UPDATE_TYPE}.from.first_name" )
+	ADMIN_LANGUAGE_CODE=$( echo "${UPDATEJSON}" | jq ".result | .[0].${UPDATE_TYPE}.from.language_code" )
+fi
 
 telegram.bot --bottoken "${BOT_TOKEN}" --chatid "${CHAT_ID}" --success --text "telegram\.bot is installed successfully, continuing to install the rest of the system\."
 
@@ -348,6 +360,47 @@ else
 	telegram.bot --bottoken "${BOT_TOKEN}" --chatid "${CHAT_ID}" --warning --text "condocam_detection.service is not enabled. Compile **python-opencv** on your pi and enable the service manually."
 fi
 
+telegram.bot --bottoken "${BOT_TOKEN}" --chatid "${CHAT_ID}" --success --text "I am installing now LiStaBot for providing you some system information"
+echo
+echo "Installing a patched version of LiStaBot"
+echo
+# install lista.sh dependencies
+waitForApt
+echo "sudo apt install -y sysstat"
+sudo apt install -y sysstat
+
+# get latest version from https://github.com/beep-projects/LiStaBot
+version=$(curl -sI https://github.com/beep-projects/LiStaBot/releases/latest | awk -F '/' '/^location/ {print  substr($NF, 1, length($NF)-1)}')
+wget "https://github.com/beep-projects/LiStaBot/archive/refs/tags/${version}.zip"
+unzip "${version}.zip"
+# the files are in "LiStaBot-${version#v}"
+LISTA_CONF="LiStaBot-${version#v}/listabot.conf"
+# fill the config with the data from condocambot
+sed -i "s/^BOT_TOKEN=.*/BOT_TOKEN=${BOT_TOKEN}/" "${LISTA_CONF}"
+sed -i "s/^CHAT_ID=.*/CHAT_ID=${CHAT_ID}/" "${LISTA_CONF}"
+sed -i "s/^ADMIN_ID=.*/ADMIN_ID=${ADMIN_ID}/" "${LISTA_CONF}"
+sed -i "s/^LAST_UPDATE_ID=.*/LAST_UPDATE_ID=${LAST_UPDATE_ID}/" "${LISTA_CONF}"
+# patch lista_bot.sh to read from named pipe instead of querying Telegram
+# remove the setCommand call. Condocambot is taking care of this
+sed -i 's/^\(\s*\)setCommandList/\1# Condocam patched this to have control over the bot commands\n\1#setCommandList/g' "LiStaBot-${version#v}/lista_bot.sh"
+# insert named pipe
+echo "Patching named pipe into LiStaBot-${version#v}/lista_bot.sh"
+sed -i '/^CHECK_INTERVAL=/a \\n# Condocam patched this to read from named pipe\nNAMED_PIPE_IN=condocam_to_lista_pipe' "LiStaBot-${version#v}/lista_bot.sh"
+# patch to read from named pipe
+echo "Patching loop to read from named pipe into LiStaBot-${version#v}/lista_bot.sh"
+#sed -i 's/^\(\s*\)updateJSON=\$( telegram.bot -bt "${BOT_TOKEN}" -q --get_updates --timeout ${TIMEOUT} --offset ${nextUpdateId} )/\1# Condocam patched this to read from named pipe\n\1#updateJSON=\$( telegram.bot -bt "${BOT_TOKEN}" -q --get_updates --timeout ${TIMEOUT} --offset ${nextUpdateId} )\n\1while IFS= read -t $TIMEOUT -r line; do\n\1  updateJSON+=$line\n\1done < $NAMED_PIPE_IN\n/g'
+sed -i 's/^\(\s*\)local updateJSON/\1# Condocam patched this to make sure updateJSON is always reinitialized\n\1local updateJSON=""/g' "LiStaBot-${version#v}/lista_bot.sh"
+sed -i 's/^\(\s*\)updateJSON=\$( telegram.bot -bt "${BOT_TOKEN}" -q --get_updates --timeout ${TIMEOUT} --offset ${nextUpdateId} )/\1# Condocam patched this to read from named pipe\
+\1#updateJSON=\$( telegram.bot -bt "${BOT_TOKEN}" -q --get_updates --timeout ${TIMEOUT} --offset ${nextUpdateId} )\
+\1while IFS= read -t $TIMEOUT -r line; do\
+\1  updateJSON+=$line\
+\1done < $NAMED_PIPE_IN/g' "LiStaBot-${version#v}/lista_bot.sh"
+echo
+echo "LiStaBot-${version#v}/lista_bot.sh is patched now."
+echo "Run installer: LiStaBot-${version#v}/install_lista.sh --bot --no-service"
+# install LiStaBot as script only
+chmod 755 "LiStaBot-${version#v}/install_lista.sh"
+LiStaBot-${version#v}/install_lista.sh --bot --no-service
 
 if $ENABLE_RASPAP; then
   #install raspap
@@ -356,6 +409,11 @@ if $ENABLE_RASPAP; then
 fi
 
 telegram.bot --bottoken "${BOT_TOKEN}" --chatid "${CHAT_ID}" --success --text "All packages are installed now, I am just doing some clean up and then I will be available for you at http://${HOSTNAME}:8765"
+
+# make journalctl persistent for easier offline debugging
+echo
+echo "Making systemctl log persisten for offline analysis under /var/log/journal/"
+sed -i 's/^#Storage=auto/Storage=persistent/g' "/etc/systemd/journald.conf"
 
 echo "remove autoinstalled packages" 
 waitForApt
