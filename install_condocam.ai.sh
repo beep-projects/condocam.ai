@@ -35,30 +35,6 @@ function error() {
     exit "${2-1}" ## Return a code specified by $2, or 1 by default.
 }
 
-#######################################
-# Checks if internet can be accessed
-# and waits until they become available. 
-# Warning, you might get stuck forever in here
-# Globals:
-#   None
-# Arguments:
-#   None
-# Outputs:
-#   None
-#######################################
-function waitForInternet() {
-  until nc -zw1 google.com 443 >/dev/null 2>&1;  do
-    #wget should be available on most Linux distributions
-    if wget -q --spider http://google.com; then
-      break # we are online
-    else
-      #we are still offline
-      echo ["$(date +%T)"] waiting for internet access ...
-      sleep 1
-    fi
-  done
-}
-
 echo 
 echo "=============================================================="
 echo " WARNING  WARNING  WARNING  WARNING  WARNING  WARNING  WARNING"

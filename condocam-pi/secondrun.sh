@@ -56,15 +56,11 @@ function waitForApt() {
 #   None
 #######################################
 function waitForInternet() {
-  until nc -zw1 google.com 443 >/dev/null 2>&1;  do
-    #newer Raspberry Pi OS versions do not have nc preinstalled, but wget is still there
-    if wget -q --spider http://google.com; then
-      break # we are online
-    else
-      #we are still offline
-      echo ["$(date +%T)"] waiting for internet access ...
-      sleep 1
-    fi
+  #until nc -zw1 google.com 443 >/dev/null 2>&1;  do
+  #newer Raspberry Pi OS versions do not have nc preinstalled, but wget is still there
+  while ! wget -q --spider http://google.com; do
+    echo ["$(date +%T)"] waiting for internet access ...
+    sleep 1
   done
 }
 
@@ -390,6 +386,7 @@ sed -i '/^CHECK_INTERVAL=/a \\n# Condocam patched this to read from named pipe\n
 echo "Patching loop to read from named pipe into LiStaBot-${version#v}/lista_bot.sh"
 #sed -i 's/^\(\s*\)updateJSON=\$( telegram.bot -bt "${BOT_TOKEN}" -q --get_updates --timeout ${TIMEOUT} --offset ${nextUpdateId} )/\1# Condocam patched this to read from named pipe\n\1#updateJSON=\$( telegram.bot -bt "${BOT_TOKEN}" -q --get_updates --timeout ${TIMEOUT} --offset ${nextUpdateId} )\n\1while IFS= read -t $TIMEOUT -r line; do\n\1  updateJSON+=$line\n\1done < $NAMED_PIPE_IN\n/g'
 sed -i 's/^\(\s*\)local updateJSON/\1# Condocam patched this to make sure updateJSON is always reinitialized\n\1local updateJSON=""/g' "LiStaBot-${version#v}/lista_bot.sh"
+# shellcheck disable=SC2016
 sed -i 's/^\(\s*\)updateJSON=\$( telegram.bot -bt "${BOT_TOKEN}" -q --get_updates --timeout ${TIMEOUT} --offset ${nextUpdateId} )/\1# Condocam patched this to read from named pipe\
 \1#updateJSON=\$( telegram.bot -bt "${BOT_TOKEN}" -q --get_updates --timeout ${TIMEOUT} --offset ${nextUpdateId} )\
 \1while IFS= read -t $TIMEOUT -r line; do\
@@ -400,7 +397,7 @@ echo "LiStaBot-${version#v}/lista_bot.sh is patched now."
 echo "Run installer: LiStaBot-${version#v}/install_lista.sh --bot --no-service"
 # install LiStaBot as script only
 chmod 755 "LiStaBot-${version#v}/install_lista.sh"
-LiStaBot-${version#v}/install_lista.sh --bot --no-service
+"LiStaBot-${version#v}/install_lista.sh --bot --no-service"
 
 if $ENABLE_RASPAP; then
   #install raspap

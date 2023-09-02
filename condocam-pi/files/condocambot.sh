@@ -53,10 +53,10 @@ ADMIN_LANGUAGE_CODE=""
 #######################################
 trap_cleanup() {
   # Close any open named pipes
-  rm -f $NAMED_PIPE_OUT
+  rm -f "${NAMED_PIPE_OUT}"
   # Terminate any running subshells
-  pkill -P $LISTA_BOT_PID
-  pkill -P $LISTA_WATCHDOG_PID
+  pkill -P "${LISTA_BOT_PID}"
+  pkill -P "${LISTA_WATCHDOG_PID}"
   # inform admin about the exit reason
   telegram.bot -bt "${BOT_TOKEN}" -cid "${CHAT_ID}" -q --info --title "condocambot exits" --text "Received signal $1\. Exiting\."
   # Exit the script
@@ -227,12 +227,11 @@ do
       command=$( echo "${updateJSON}" | jq '.result | .[0].message.text' )
       command="${command%\"}" 
       command="${command#\"}"
-      text=""
       case "${command}" in
         # forward updateJSON to listabot for processing of these commands
         /systemstatus | /gcl | /gru | /uptime | /df | /getconfig | /gconf | /setdisklimit | /sdl | /setcpulimit | /scl | \
-        /setramlimit | /srl | /setcheckinterval | /sci | /getcpuloadtopx | /gcl | /getramusagetopx | /gru )
-          if ! ps -p $LISTA_BOT_PID > /dev/null 2>&1; then
+        /setramlimit | /srl | /setcheckinterval | /sci | /getcpuloadtopx | /getramusagetopx )
+          if ! ps -p "${LISTA_BOT_PID}" > /dev/null 2>&1; then
             # if lista_bot.sh died for some reason, restart it
             start_lista_scripts
           fi
