@@ -41,6 +41,7 @@ import subprocess
 BOT_TOKEN = None
 CHAT_ID = None
 
+
 class ImageDirectoryWatcher:  # pylint: disable=too-few-public-methods
   """Watchdog for a specified image directory.
 
@@ -99,10 +100,13 @@ class JPEGHandler(FileSystemEventHandler):
     # when using imghdr.what(). Therefor we rely on the file extension for these
     # the lastsnap.jpg files will be ignored, as they are requested by the user
     # and should not be checked.
-    if (filetype.is_image(event.src_path) is not None or event.src_path.lower().endswith(
-      (".jpg", ".jpeg"))) and not event.src_path.lower().endswith("lastsnap.jpg"):
+    if (
+        filetype.is_image(event.src_path) is not None
+        or event.src_path.lower().endswith((".jpg", ".jpeg"))
+    ) and not event.src_path.lower().endswith("lastsnap.jpg"):
       # if it is an image, put it into the processing queue
       self._image_queue.put(event.src_path)
+
 
 def process_image(image_queue, confidence):
   """Inits the JPEGHandler.
@@ -121,9 +125,27 @@ def process_image(image_queue, confidence):
   blob_size = 480
   # initialize the list of class labels MobileNet SSD was trained to detect
   classes = [
-      "background", "aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair",
-      "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa",
-      "train", "tvmonitor"
+      "background",
+      "aeroplane",
+      "bicycle",
+      "bird",
+      "boat",
+      "bottle",
+      "bus",
+      "car",
+      "cat",
+      "chair",
+      "cow",
+      "diningtable",
+      "dog",
+      "horse",
+      "motorbike",
+      "person",
+      "pottedplant",
+      "sheep",
+      "sofa",
+      "train",
+      "tvmonitor",
   ]
   # load the serialized model from disk
   net = cv2.dnn.readNetFromCaffe(prototxt, caffeemodel)
@@ -168,20 +190,23 @@ def process_image(image_queue, confidence):
         idx = int(detections[0, 0, i, 1])
         if classes[idx] == "person":
           person_detected = True
-          #one person in the image is enough
+          # one person in the image is enough
           break
 
     if person_detected:
-      subprocess.run(["telegram.bot", "-bt", BOT_TOKEN, "-cid", CHAT_ID,
-                                      "--quiet", "--photo", image_path], check=False)
+      subprocess.run(
+          ["telegram.bot", "-bt", BOT_TOKEN, "-cid", CHAT_ID, "--quiet", "--photo", image_path],
+          check=False,
+      )
+
 
 def main():
   """main function, starts the image directory watchdog, the image processing process pool
-    and sets up the queue used for communication between these modules"""
+  and sets up the queue used for communication between these modules"""
   # read the config
   parser = configparser.ConfigParser()
   # hack, because ConfigParser requires sections, so we add one
-  with open("/etc/condocam/condocambot.conf") as stream:
+  with open("/etc/condocam/condocambot.conf", encoding="utf-8") as stream:
     parser.read_string("[fakesection]\n" + stream.read())
   global BOT_TOKEN
   BOT_TOKEN = parser["fakesection"]["BOT_TOKEN"]
@@ -191,13 +216,15 @@ def main():
   # construct the argument parser and parse the arguments
   ap = argparse.ArgumentParser()
   ap.add_argument(
-      "-p", "--path", required=True, help="path to the image folder that should be monitored")
+      "-p", "--path", required=True, help="path to the image folder that should be monitored"
+  )
   ap.add_argument(
       "-c",
       "--confidence",
       type=float,
       default=0.5,
-      help="minimum probability for people detection, to filter weak detections")
+      help="minimum probability for people detection, to filter weak detections",
+  )
   args = vars(ap.parse_args())
   # base path, the watcher will go recursively into the subdirectories
   image_directory = args["path"]
@@ -222,7 +249,8 @@ def main():
       arguments.append((image_queue, confidence))
     pool.starmap(process_image, arguments)
 
-#end of main()
+
+# end of main()
 
 if __name__ == "__main__":
   main()

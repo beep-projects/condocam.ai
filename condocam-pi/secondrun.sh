@@ -70,6 +70,7 @@ trap 'exec 2>&4 1>&3' 0 1 2 3
 exec 1>/boot/secondrun.log 2>&1
 
 echo "START secondrun.sh"
+echo "This script is running as user: $( whoami )"
 # the following variables should be set by firstrun.sh
 BOT_TOKEN=COPY_BOT_TOKEN_HERE
 ENABLE_RASPAP=false
@@ -104,8 +105,8 @@ waitForInternet
 # first we setup telegram, so we can send status messages to the user
 echo "installing utilities missing in Raspberry OS, but needed by this script"
 waitForApt
-echo "sudo apt install -y bc jq"
-sudo apt install -y bc jq
+echo "sudo apt install -y bc jq python3-pip"
+sudo apt install -y bc jq python3-pip
 #setup the telegram bot
 echo "I am now setting up the telegram communication"
 # make sure that the telegram scrip uses the configured TELEGRAM_CONF
@@ -118,8 +119,9 @@ chmod 755 telegram.bot
 sudo ./telegram.bot --install
 
 echo "configuring telegram bot"
+echo "BOT_TOKEN: ${BOT_TOKEN}, CHAT_ID: ${CHAT_ID}, ADMIN_ID: ${ADMIN_ID}, LAST_UPDATE_ID: ${LAST_UPDATE_ID}"
 
-if [[ -z "${CHAT_ID}" ]] || [[ -z "${ADMIN_ID}" ]] || [[ -z "${LAST_UPDATE_ID}" ]]; then
+if [[ -z "${CHAT_ID}" || -z "${ADMIN_ID}" || -z "${LAST_UPDATE_ID}" ]]; then
 	echo "telegram.bot --get_updates --bottoken ${BOT_TOKEN}"
 	# for this call to be successfull, there must be one new message in the bot chat, not older than 24h
 	UPDATEJSON=$( telegram.bot --get_updates --bottoken ${BOT_TOKEN} )
@@ -142,7 +144,7 @@ if [[ -z "${CHAT_ID}" ]] || [[ -z "${ADMIN_ID}" ]] || [[ -z "${LAST_UPDATE_ID}" 
 	ADMIN_LANGUAGE_CODE=$( echo "${UPDATEJSON}" | jq ".result | .[0].${UPDATE_TYPE}.from.language_code" )
 fi
 
-telegram.bot --bottoken "${BOT_TOKEN}" --chatid "${CHAT_ID}" --success --text "telegram\.bot is installed successfully, continuing to install the rest of the system\."
+telegram.bot --bottoken "${BOT_TOKEN}" --chatid "${CHAT_ID}" --success --text "telegram\.bot is installed successfully, next step is to update the underlying Raspberry Pi OS\."
 
 if [[ "${ARCH}" == "armv6l" ]]; then
 	telegram.bot --bottoken "${BOT_TOKEN}" --chatid "${CHAT_ID}" --warning --text "You are trying to run **condocam.ai** on an **armv6l** based system, which is **not** properly supported\.\n
@@ -150,12 +152,22 @@ if [[ "${ARCH}" == "armv6l" ]]; then
 	If you know how to fix these issue, please contribute to the project\."
 fi
 
-# now we want to update the system and install packages
+#network should be up, update the system
 echo "updating the system"
 waitForApt
-sudo apt update
+sudo apt update --allow-releaseinfo-change # bookworn introduced an issue with the release files being not valid
 waitForApt
 sudo apt full-upgrade -y
+# do it again, because it seems to fix the bookworm release file issues
+sudo apt update --allow-releaseinfo-change # bookworn introduced an issue with the release files being not valid
+waitForApt
+sudo apt full-upgrade -y
+# do it again, because it seems to fix the bookworm release file issues
+sudo apt update --allow-releaseinfo-change # bookworn introduced an issue with the release files being not valid
+waitForApt
+sudo apt full-upgrade -y
+
+# now we want to install required packages
 # arp-scan is needed by the presence detection of devices and fail2ban you add some security to the system
 waitForApt
 echo "sudo apt install -y arp-scan fail2ban"
@@ -182,11 +194,11 @@ telegram.bot --bottoken "${BOT_TOKEN}" --chatid "${CHAT_ID}" --success --text "s
 # install motion and all dependencies
 echo "installing motion and all dependencies"
 if [[ "${ARCH}" == "armv6l" ]]; then
-	wget https://github.com/Motion-Project/motion/releases/download/release-4.5.1/pi_bullseye_motion_4.5.1-1_armhf.deb
-	sudo apt install -y ./pi_bullseye_motion_4.5.1-1_armhf.deb
+  wget https://github.com/Motion-Project/motion/releases/download/release-4.6.0/pi_bookworm_motion_4.6.0-1_armhf.deb
+  sudo apt install -y ./pi_bookworm_motion_4.6.0-1_armhf.deb
 else
-	wget https://github.com/Motion-Project/motion/releases/download/release-4.5.1/bullseye_motion_4.5.1-1_arm64.deb
-	sudo apt install -y ./bullseye_motion_4.5.1-1_arm64.deb
+  wget https://github.com/Motion-Project/motion/releases/download/release-4.6.0/pi_bookworm_motion_4.6.0-1_arm64.deb
+  sudo apt install -y ./pi_bookworm_motion_4.6.0-1_arm64.deb
 fi
 # Disable motion service, motionEye controls motion
 sudo systemctl stop motion
@@ -196,30 +208,44 @@ sudo systemctl disable motion
 # create the folder if it does not exist
 motionLogDir="/var/log/motion"
 if [[ ! -e ${motionLogDir} ]]; then
-    sudo mkdir -p ${motionLogDir}
-    #motion user should be in group motion
-    sudo chown root:motion ${motionLogDir}
-    #make read and writable for user and group, others read only
-    sudo chmod 664 ${motionLogDir}
+  sudo mkdir -p ${motionLogDir}
+  #motion user should be in group motion
+  sudo chown root:motion ${motionLogDir}
+  #make read and writable for user and group, others read only
+  sudo chmod 664 ${motionLogDir}
 fi
 
-echo "installing motioneye dependencies"
-echo "sudo apt install -y libssl-dev libcurl4-openssl-dev libjpeg-dev libz-dev"
-sudo apt install -y libssl-dev libcurl4-openssl-dev libjpeg-dev libz-dev
-#sudo apt install -y python-pip python-dev libssl-dev libcurl4-openssl-dev libjpeg-dev libz-dev python-pil
-# this part is getting ugly because motioneye requires the deprecated python2.7
-# be sure to use python2.7 and make python link to python2
-echo "sudo apt install -y python-is-python2 python-dev-is-python2"
-sudo apt install -y python-is-python2 python-dev-is-python2
-# get pip for python 2.7 which is no longer in the Raspberry Pi OS repositories
-wget https://bootstrap.pypa.io/pip/2.7/get-pip.py
-# install pip
-sudo python get-pip.py
-# install pillow, which is also no longer available in the Raspberry Pi OS repositories
-sudo pip install pillow
+# On recent Raspberry Pi OS (Bookworm ant later) versions, the libpython3.*-stdlib package ships a file /usr/lib/python3.*/EXTERNALLY-MANAGED,
+# which prevents the installation of Python modules outside of venv environments.
+# To ease installation we follow the motionEye guide and bypass this block by adding "break-system-packages=true" to the [global] section of the pip.conf
+grep -q '\[global\]' /etc/pip.conf 2> /dev/null || printf '%b' '[global]\n' | sudo tee -a /etc/pip.conf > /dev/null
+sudo sed -i '/^\[global\]/a\break-system-packages=true' /etc/pip.conf
+
+# On 32-bit ARMv6 and ARMv7 systems, additionally configure pip to use pre-compiled wheels from piwheels
+if [[ "${ARCH}" == "armv6l" || "${ARCH}" == "armv7l" ]]; then
+  grep -q '\[global\]' /etc/pip.conf 2> /dev/null || printf '%b' '[global]\n' | sudo tee -a /etc/pip.conf > /dev/null
+  sudo sed -i '/^\[global\]/a\extra-index-url=https://www.piwheels.org/simple/' /etc/pip.conf
+fi
+
+#echo "installing motioneye dependencies"
+#echo "sudo apt install -y libssl-dev libcurl4-openssl-dev libjpeg-dev libz-dev"
+#sudo apt install -y libssl-dev libcurl4-openssl-dev libjpeg-dev libz-dev
+##sudo apt install -y python-pip python-dev libssl-dev libcurl4-openssl-dev libjpeg-dev libz-dev python-pil
+## this part is getting ugly because motioneye requires the deprecated python2.7
+## be sure to use python2.7 and make python link to python2
+#echo "sudo apt install -y python-is-python2 python-dev-is-python2"
+#sudo apt install -y python-is-python2 python-dev-is-python2
+## get pip for python 2.7 which is no longer in the Raspberry Pi OS repositories
+#wget https://bootstrap.pypa.io/pip/2.7/get-pip.py
+## install pip
+#sudo python get-pip.py
+## install pillow, which is also no longer available in the Raspberry Pi OS repositories
+#sudo pip install pillow
 
 echo "installing motioneye"
-sudo pip install motioneye
+#sudo pip install motioneye
+sudo python3 -m pip install --pre motioneye
+#sudo motioneye_init
 
 # don't do this step from the installation guide, we do not want to use the default config
 # sudo cp /usr/local/share/motioneye/extra/motioneye.conf.sample /etc/motioneye/motioneye.conf
@@ -250,7 +276,7 @@ do
 	# set motion detection max_threshold to 10% of all pixels
 	MAX_THRESH=$(echo "(${WIDTH}*${HEIGHT}*0.1)/1" | bc)
 	# set different values if WIDTH or HEIGHT is > 1000px
-	if [[ ${WIDTH} -gt 1000 ]] || [[ ${HEIGHT} -gt 1000 ]] ; then
+	if [[ ${WIDTH} -gt 1000 || ${HEIGHT} -gt 1000 ]] ; then
 		THRESH=$(echo "(${WIDTH}*${HEIGHT}*0.003)/1" | bc)
 		MAX_THRESH=$(echo "(${WIDTH}*${HEIGHT}*0.03)/1" | bc)
 	fi
@@ -306,8 +332,8 @@ else
 	telegram.bot --bottoken "${BOT_TOKEN}" --chatid "${CHAT_ID}" --success --text "motion and motionEye are now installed, next one up is OpenCV and its dependencies for enabling people detection"
 	echo "install python3 dependecies for people detection with OpenCV"
 	waitForApt
-	echo "sudo apt install -y libatlas-base-dev python3-pip openexr libgtk-3-dev"
-	sudo apt install -y libatlas-base-dev python3-pip openexr libgtk-3-dev
+	echo "sudo apt install -y libatlas-base-dev openexr libgtk-3-dev"
+	sudo apt install -y libatlas-base-dev openexr libgtk-3-dev
 	# numpy only supports python3
 	# make sure to use -U because numpy is already installed on Raspberry Pi OS but needs an update
 	sudo pip3 install -U numpy opencv-utils opencv-python imutils watchdog filetype
@@ -394,10 +420,10 @@ sed -i 's/^\(\s*\)updateJSON=\$( telegram.bot -bt "${BOT_TOKEN}" -q --get_update
 \1done < $NAMED_PIPE_IN/g' "LiStaBot-${version#v}/lista_bot.sh"
 echo
 echo "LiStaBot-${version#v}/lista_bot.sh is patched now."
-echo "Run installer: LiStaBot-${version#v}/install_lista.sh --bot --no-service"
+echo "Run installer: LiStaBot-${version#v}/install_lista.sh --bot --no-service --bottoken ${BOT_TOKEN} --chatid ${CHAT_ID}"
 # install LiStaBot as script only
 chmod 755 "LiStaBot-${version#v}/install_lista.sh"
-"LiStaBot-${version#v}/install_lista.sh --bot --no-service"
+eval "/boot/LiStaBot-${version#v}/install_lista.sh --bot --no-service --bottoken ${BOT_TOKEN} --chatid ${CHAT_ID}"
 
 if $ENABLE_RASPAP; then
   #install raspap
@@ -412,6 +438,7 @@ echo
 echo "Making systemctl log persisten for offline analysis under /var/log/journal/"
 sed -i 's/^#Storage=auto/Storage=persistent/g' "/etc/systemd/journald.conf"
 
+#clean up
 echo "remove autoinstalled packages" 
 waitForApt
 echo "sudo apt -y autoremove"

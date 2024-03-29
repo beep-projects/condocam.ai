@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 #
-# Copyright (c) 2021, The beep-projects contributors
+# Copyright (c) 2021-2024, The beep-projects contributors
 # this file originated from https://github.com/beep-projects
 # Do not remove the lines above.
 # This program is free software: you can redistribute it and/or modify
@@ -42,6 +42,7 @@ echo "=============================================================="
 echo 
 echo "This script will make use of dd to flash a SD card. This has the potential to break your system."
 echo "By continuing, you confirm that you know what you are doing and that you will double check every step of this script"
+echo "Insert a SD card into this computer and"
 read -rp "press Y to continue " -n 1 -s
 echo
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -61,7 +62,8 @@ else
   SD_CARD_PATH="/dev/mmcblk0"
 fi
 
-RPI_IMAGE_URL="https://downloads.raspberrypi.org/raspios_lite_arm64/images/raspios_lite_arm64-2022-04-07/2022-04-04-raspios-bullseye-arm64-lite.img.xz"
+#RPI_IMAGE_URL="https://downloads.raspberrypi.org/raspios_lite_arm64/images/raspios_lite_arm64-2022-04-07/2022-04-04-raspios-bullseye-arm64-lite.img.xz"
+RPI_IMAGE_URL="https://downloads.raspberrypi.com/raspios_lite_arm64/images/raspios_lite_arm64-2024-03-15/2024-03-15-raspios-bookworm-arm64-lite.img.xz"
 USE_LATEST_RASPI_OS=false
 
 RASPI_OS_TYPE="lite" # or "full"
@@ -83,10 +85,10 @@ echo " check SD card path"
 echo "=============================================================="
 echo 
 
-echo "please make sure that your SD card is inserted to this computer"
-echo "press any key to continue ..."
-read -rn 1 -s
-echo
+#echo "please make sure that your SD card is inserted to this computer"
+#echo "press any key to continue ..."
+#read -rn 1 -s
+#echo
 
 DISKNAME=$( echo "${SD_CARD_PATH}" | rev | cut -d "/" -f 1 | rev )
 
@@ -283,15 +285,15 @@ echo
 #######################################
 # Try to obtain the chat_id from messages with command /start.
 #######################################
-BOT_TOKEN=$( grep "^BOT_TOKEN=" condocam-pi/firstrun.sh | cut -d "=" -f 2 )
+BOT_TOKEN=$( grep "^BOT_TOKEN=" "${RPI_PATH}/firstrun.sh" | cut -d "=" -f 2 )
 if [[ ! ${BOT_TOKEN} =~ ^[0-9]{8,10}:[0-9a-zA-Z_-]{35}$ ]]; then
-  error "\"${BOT_TOKEN}\" does not seem to be a valid bot token. Please correct your entry in condocam-pi/firstrun.sh."
+  error "\"${BOT_TOKEN}\" does not seem to be a valid bot token. Please correct your entry in ${RPI_PATH}/firstrun.sh."
 fi
 CURL_RESULT=$(curl --silent --insecure "https://api.telegram.org/bot${BOT_TOKEN}/getMe")
-echo "${CURL_RESULT}" | grep '"ok":true' > /dev/null || { error "Your bot token could not be validated. Reason: ${CURL_RESULT}. Please correct your entry in condocam-pi/firstrun.sh"; }
+echo "${CURL_RESULT}" | grep '"ok":true' > /dev/null || { error "Your bot token could not be validated. Reason: ${CURL_RESULT}. Please correct your entry in ${RPI_PATH}/firstrun.sh"; }
 
 update_json=""
-while [[ -z "${CHAT_ID}" ]] || [[ -z "${ADMIN_ID}" ]] || [[ -z "${ADMIN_IS_BOT}" ]] || [[ -z "${ADMIN_FIRST_NAME}" ]] || [[ -z "${ADMIN_LANGUAGE_CODE}" ]] || [[ -z "${LAST_UPDATE_ID}" ]]; do
+while [[ -z "${CHAT_ID}" || -z "${ADMIN_ID}" || -z "${ADMIN_IS_BOT}" || -z "${ADMIN_FIRST_NAME}" || -z "${ADMIN_LANGUAGE_CODE}" || -z "${LAST_UPDATE_ID}" ]]; do
   update_json=$( telegram.bot --get_updates --bottoken "${BOT_TOKEN}" )
  	UPDATE_TYPE="message" # direct message
 	if [[ $( echo "${UPDATEJSON}" | jq '.result | .[0].message' ) = "null" ]]; then
@@ -305,17 +307,17 @@ while [[ -z "${CHAT_ID}" ]] || [[ -z "${ADMIN_ID}" ]] || [[ -z "${ADMIN_IS_BOT}"
   ADMIN_LANGUAGE_CODE=$( echo "${update_json}" | jq ".result | [.[].${UPDATE_TYPE} | select(.text==\"/start\")][-1].from.language_code" )
   LAST_UPDATE_ID=$( echo "${update_json}" | jq ".result | [select(.[].${UPDATE_TYPE}.text==\"/start\")][] | .[-1].update_id" )
   
-  if [[ -z "${CHAT_ID}" ]] || [[ -z "${ADMIN_ID}" ]] || [[ -z "${LAST_UPDATE_ID}" ]]; then
+  if [[ -z "${CHAT_ID}" || -z "${ADMIN_ID}" || -z "${LAST_UPDATE_ID}" ]]; then
     echo "please send /start to bot #${BOT_TOKEN}, I am still waiting ..."
     sleep 10
   else #TODO check the globals for these files
     printf "CHAT_ID: %s, ADMIN_ID: %s, LAST_UPDATE_ID: %s\n" "$CHAT_ID" "$ADMIN_ID" "$LAST_UPDATE_ID"
-    sed -i "s/^CHAT_ID=.*/CHAT_ID=$CHAT_ID/" condocam-pi/secondrun.sh
-    sed -i "s/^ADMIN_ID=.*/ADMIN_ID=$ADMIN_ID/" condocam-pi/secondrun.sh
-    sed -i "s/^ADMIN_IS_BOT=.*/ADMIN_IS_BOT=$ADMIN_IS_BOT/" condocam-pi/secondrun.sh
-    sed -i "s/^ADMIN_FIRST_NAME=.*/ADMIN_FIRST_NAME=$ADMIN_FIRST_NAME/" condocam-pi/secondrun.sh
-    sed -i "s/^ADMIN_LANGUAGE_CODE=.*/ADMIN_LANGUAGE_CODE=$ADMIN_LANGUAGE_CODE/" condocam-pi/secondrun.sh
-    sed -i "s/^LAST_UPDATE_ID=.*/LAST_UPDATE_ID=$LAST_UPDATE_ID/" condocam-pi/secondrun.sh
+    sed -i "s/^CHAT_ID=.*/CHAT_ID=$CHAT_ID/" "${RPI_PATH}/secondrun.sh"
+    sed -i "s/^ADMIN_ID=.*/ADMIN_ID=$ADMIN_ID/" "${RPI_PATH}/secondrun.sh"
+    sed -i "s/^ADMIN_IS_BOT=.*/ADMIN_IS_BOT=$ADMIN_IS_BOT/" "${RPI_PATH}/secondrun.sh"
+    sed -i "s/^ADMIN_FIRST_NAME=.*/ADMIN_FIRST_NAME=$ADMIN_FIRST_NAME/" "${RPI_PATH}/secondrun.sh"
+    sed -i "s/^ADMIN_LANGUAGE_CODE=.*/ADMIN_LANGUAGE_CODE=$ADMIN_LANGUAGE_CODE/" "${RPI_PATH}/secondrun.sh"
+    sed -i "s/^LAST_UPDATE_ID=.*/LAST_UPDATE_ID=$LAST_UPDATE_ID/" "${RPI_PATH}/secondrun.sh"
     break
   fi
 done
@@ -334,7 +336,8 @@ echo "NOTE: when starting up, your raspberry pi should reboot 4 times until all 
 echo
 echo "///////////////////////////////////////////////////////////////"
 echo
-echo "               ssh -x ${RPI_USER_NAME}@${RPI_HOST_NAME}.local"
+echo "               ssh -x ${RPI_USER_NAME}@${RPI_HOST_NAME}"
+echo "               tail -f /boot/secondrun.log"
 echo "               http://${RPI_HOST_NAME}:8765/"
 echo
 echo "///////////////////////////////////////////////////////////////"

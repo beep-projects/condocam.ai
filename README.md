@@ -1,6 +1,8 @@
 <img src="doc/resources/condocam.ai_banner.png" alt="condocam.ai" />
 
-[![GitHub license](https://img.shields.io/github/license/beep-projects/condocam.ai)](https://github.com/beep-projects/condocam.ai/blob/main/LICENSE) [![shellcheck](https://github.com/beep-projects/condocam.ai/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/beep-projects/condocam.ai/actions/workflows/shellcheck.yml) [![Pylint](https://github.com/beep-projects/condocam.ai/actions/workflows/pylint.yml/badge.svg)](https://github.com/beep-projects/condocam.ai/actions/workflows/pylint.yml) [![GitHub issues](https://img.shields.io/github/issues/beep-projects/condocam.ai)](https://github.com/beep-projects/SystaPi/issues) [![GitHub forks](https://img.shields.io/github/forks/beep-projects/condocam.ai)](https://github.com/beep-projects/condocam.ai/network) [![GitHub stars](https://img.shields.io/github/stars/beep-projects/condocam.ai)](https://github.com/beep-projects/condocam.ai/stargazers) ![GitHub repo size](https://img.shields.io/github/repo-size/beep-projects/condocam.ai) [![Scc Count Badge](https://sloc.xyz/github/beep-projects/condocam.ai/?category=code)](https://github.com/beep-projects/condocam.ai/) [![Scc Count Badge](https://sloc.xyz/github/beep-projects/condocam.ai/?category=blanks)](https://github.com/beep-projects/condocam.ai/) [![Scc Count Badge](https://sloc.xyz/github/beep-projects/condocam.ai/?category=lines)](https://github.com/beep-projects/condocam.ai/) [![Scc Count Badge](https://sloc.xyz/github/beep-projects/condocam.ai/?category=comments)](https://github.com/beep-projects/condocam.ai/) [![Scc Count Badge](https://sloc.xyz/github/beep-projects/condocam.ai/?category=cocomo)](https://github.com/beep-projects/condocam.ai/) [![Visitors](https://api.visitorbadge.io/api/visitors?path=beep-projects%2Fcondocam.ai&label=Visitors&labelColor=%235a5a5a&countColor=%234cc71e&style=flat&labelStyle=none)](https://visitorbadge.io/status?path=beep-projects%2Fcondocam.ai)
+<sup>Code:</sup> [![GitHub license](https://img.shields.io/github/license/beep-projects/condocam.ai)](https://github.com/beep-projects/condocam.ai/blob/main/LICENSE) [![Scc Count Badge](https://sloc.xyz/github/beep-projects/condocam.ai/?category=code)](https://github.com/beep-projects/condocam.ai/) [![Scc Count Badge](https://sloc.xyz/github/beep-projects/condocam.ai/?category=blanks)](https://github.com/beep-projects/condocam.ai/) [![Scc Count Badge](https://sloc.xyz/github/beep-projects/condocam.ai/?category=lines)](https://github.com/beep-projects/condocam.ai/) [![Scc Count Badge](https://sloc.xyz/github/beep-projects/condocam.ai/?category=comments)](https://github.com/beep-projects/condocam.ai/) [![Scc Count Badge](https://sloc.xyz/github/beep-projects/condocam.ai/?category=cocomo)](https://github.com/beep-projects/condocam.ai/)  
+<sup>Checks:</sup> [![shellcheck](https://github.com/beep-projects/condocam.ai/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/beep-projects/condocam.ai/actions/workflows/shellcheck.yml) [![Pylint](https://github.com/beep-projects/condocam.ai/actions/workflows/pylint.yml/badge.svg)](https://github.com/beep-projects/condocam.ai/actions/workflows/pylint.yml)  
+<sup>Repo:</sup> [![GitHub issues](https://img.shields.io/github/issues/beep-projects/condocam.ai)](https://github.com/beep-projects/SystaPi/issues) [![GitHub forks](https://img.shields.io/github/forks/beep-projects/condocam.ai)](https://github.com/beep-projects/condocam.ai/network) [![GitHub stars](https://img.shields.io/github/stars/beep-projects/condocam.ai)](https://github.com/beep-projects/condocam.ai/stargazers) ![GitHub repo size](https://img.shields.io/github/repo-size/beep-projects/condocam.ai) [![Visitors](https://api.visitorbadge.io/api/visitors?path=beep-projects%2Fcondocam.ai&label=Visitors&labelColor=%235a5a5a&countColor=%234cc71e&style=flat&labelStyle=none)](https://visitorbadge.io/status?path=beep-projects%2Fcondocam.ai)  
 
 # condocam.ai
 
@@ -82,6 +84,7 @@ I use this setup for small mobile homes. One camera is enough to overlook the do
     │   └── resources          # resource files like images, used for the documentation of this project
     ├── install_condocam.ai.sh  # Script for automatically downloading, flashing and configuring 
     │                           # a Micro SD card for running condocam.ai
+    ├── getAndConfigureCondocam.ai.sh  # Script for easy configuriation of install_condocam.ai.sh 
     ├── LICENSE                 # License for using and editing this software
     └── readme.md               # This file
 ```
@@ -92,73 +95,29 @@ If everything works fine, you can set up your **contocam.ai** in less than 1 hou
 
 #### <a name="setup-a-telegram-bot"/>Setup a Telegram bot
 
-In order to use the messaging feature, you need a **Telegram** account and app. See the instructions for [telegram.bot](https://github.com/beep-projects/telegram.bot#usage) on how to set this up. After setting up the **Telegram bot** and obtaining your **API Token**, send any message to your bot. 
-**Note:** If you do not continue with the installation within the next 24h you have to send a message to your bot again!  
-**condocam.ai** will use the first received message to set the  administrator. So this might fail if you use a bot that was added to a group and other people are messaging there. You can change the configured administrator later by editing ```/etc/condocam/condocambotbot.conf``` on the device, but you have to figure out the needed IDs on your own.
+In order to use the messaging feature, you need a **Telegram** account and app. See the instructions for [telegram.bot](https://github.com/beep-projects/telegram.bot#usage) on how to set this up. After setting up the **Telegram bot** and obtaining your **API Token** (write it down, you will need it for installation), send `/start` to your bot. 
+**Note:** If you do not continue with the installation within the next 24h you have to send the message to your bot again!  
+**condocam.ai** will use the first received `/start` message to set the  administrator. So this might fail if you use a bot that was added to a group and other people are messaging there. You can change the configured administrator later by editing ```/etc/condocam/condocambotbot.conf``` on the device, but you have to figure out the needed IDs on your own.
 
 #### <a name="installation-on-linux"/>Installation on Linux
 
 For Linux I provide a script that downloads Raspberry Pi OS and flashes it onto a Micro SD card. The script was mainly written out of curiosity to see how that could work. So it has no added sanity checks and you should use it with care. Check each step, when asked to confirm. If unsure, follow the manual installation guide.
 
-1. Run the following commands in a shell for downloading and unzipping the project files
+1. Run the following command in a shell for downloading the configuration script
 
    ```bash
-   wget https://github.com/beep-projects/condocam.ai/releases/download/1.0/condocam.ai-1.0.zip
-   unzip condocam.ai-1.0.zip
+   wget https://github.com/beep-projects/condocam.ai/releases/download/2.0/getAndConfigureCondocam.ai.sh
    ```
-2. Open `condocam.ai-1.0/condocam-pi/firstrun.sh` with a text editor and configure everything in the marked section to your liking.  
-   Set the ```BOT_TOKEN``` to the **API token** of your bot from the preparation  
-   You also might want to generate your `WPA_PASSPHRASE` via `wpa_passphrase MY_WIFI passphrase` , or  use the [WPA PSK (Raw Key) Generator](https://www.wireshark.org/tools/wpa-psk.html), and add the credentials to the file.
+2. Insert the Micro SD card that you want to get prepared as condocam.ai into your computer  
+
+3. The next step will create a folder named `temp` in the current directory and clone this repo into it, which will delete any folder with the name `condocam.ai` in it. If you do not want that for some reason, edit the script before running.  
+The script will ask you for hostname, username, passwort, Wifi credentials and bot token and run the `install_condocam.ai.sh` script configured with it.
+Continue in the shell
 
    ```bash
-   #-------------------------------------------------------------------------------
-   #----------------------- START OF CONFIGURATION --------------------------------
-   #-------------------------------------------------------------------------------
-   
-   # copy here your API token obtained from @BotFather
-   BOT_TOKEN=COPY_BOT_TOKEN_HERE
-   # which hostname do you want to give your raspberry pi?
-   HOSTNAME=condocam
-   # username: beep, password: projects
-   # you can change the password if you want and generate a new password with
-   # Linux: mkpasswd --method=SHA-256
-   # Windows: you can use an online generator like https://www.dcode.fr/crypt-hasing-function
-   USERNAME=beep
-   # shellcheck disable=SC2016
-   PASSWD='$5$oLShbrSnGq$nrbeFyt99o2jOsBe1XRNqev5sWccQw8Uvyt8jK9mFR9' #keep single quote to avoid expansion of $
-   # configure the wifi connection
-   # the example WPA_PASSPHRASE is generated via
-   #     wpa_passphrase MY_WIFI passphrase
-   # but you also can enter your passphrase as plain text, if you accept the potential insecurity of that approach
-   SSID=MY_WIFI
-   WPA_PASSPHRASE=3755b1112a687d1d37973547f94d218e6673f99f73346967a6a11f4ce386e41e
-   # configure your timezone and key board settings
-   TIMEZONE="Europe/Berlin"
-   COUNTRY="DE"
-   XKBMODEL="pc105"
-   XKBLAYOUT=$COUNTRY
-   XKBVARIANT=""
-   XKBOPTIONS=""
-   # if you want to use an ENC28J60 Ethernet HAT, enable it here
-   ENABLE_ENC28J60=false
-   # if you want to setup RaspAP, so this device can be used as hotspot, enable it here
-   # if you enable this feature, you need an Ethernet interface configured or another interfact with Internet connection!
-   ENABLE_RASPAP=false
-   
-   #-------------------------------------------------------------------------------
-   #------------------------ END OF CONFIGURATION ---------------------------------
-   #-------------------------------------------------------------------------------
+   chmod 755 getAndConfigureCondocam.ai.sh && ./getAndConfigureCondocam.ai.sh
    ```
-   
-3. Insert the Micro SD card that you want to get prepared as condocam.ai into your computing device
-
-4. Continue in the shell
-
-   ```bash
-   cd condocam.ai-1.0
-   ./install_condocam.ai.sh
-   ```
-
+4. Follow the instruction in the shell  
 5. Eject the Micro SD card and insert it into your Raspberry Pi
 
 7. Power up the Raspberry Pi
@@ -168,13 +127,11 @@ For Linux I provide a script that downloads Raspberry Pi OS and flashes it onto 
    For troubleshooting, you can check the progress by checking the logs. After 5 minutes the resize of the partitions and ```firstrun.sh``` should be finished, so that you can ```ssh``` into the **condocam.ai** and watch the installation process
 
    ```bash
-   ssh -x beep@condocam.local
+   ssh beep@condocam #or whatever name you used
    tail -f /boot/secondrun.log
    ```
 
-   The password for the ```beep``` user is ```projects```,  if you did not change it during setup
-
-9. ***condocam.ai*** will message you via the Telegram bot, once the installation is finished. You can then login to the motionEye web interface at a [http://condocam:8765](http://condocam:8765)
+9. **condocam.ai** will message you via the Telegram bot, once the installation is finished. You can then login to the motionEye web interface at a [http://condocam:8765](http://condocam:8765)
 
    ```
    user: admin
@@ -183,7 +140,7 @@ For Linux I provide a script that downloads Raspberry Pi OS and flashes it onto 
 
    - You should change the passwords for the admin and user accounts
    - For configuring motionEye, see [Configuration](https://github.com/ccrisan/motioneye/wiki/Configuration)
-   - The cameras are preconfigured, but there are so many different camera models out there and you should adjust the default configuration to match your setup
+   - The cameras are preconfigured, but there are so many different camera models out there so you should adjust the default configuration to match your setup
    - If you selected to install RaspAP, check [RaspAP Basic Settings](https://docs.raspap.com/ap-basics/)
 
 #### <a name="installation-on-windows"/>Installation on Windows
