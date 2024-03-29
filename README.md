@@ -106,7 +106,7 @@ For Linux I provide a script that downloads Raspberry Pi OS and flashes it onto 
 1. Run the following command in a shell for downloading the configuration script
 
    ```bash
-   wget https://github.com/beep-projects/condocam.ai/releases/download/2.0/getAndConfigureCondocam.ai.sh
+   wget https://github.com/beep-projects/condocam.ai/releases/download/2.0/getAndConfigureCondocam.ai
    ```
 2. Insert the Micro SD card that you want to get prepared as condocam.ai into your computer  
 
