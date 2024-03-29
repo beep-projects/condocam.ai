@@ -115,7 +115,7 @@ The script will ask you for hostname, username, passwort, Wifi credentials and b
 Continue in the shell
 
    ```bash
-   chmod 755 getAndConfigureCondocam.ai.sh && ./getAndConfigureCondocam.ai.sh
+   chmod 755 getAndConfigureCondocam.ai && ./getAndConfigureCondocam.ai
    ```
 4. Follow the instruction in the shell  
 5. Eject the Micro SD card and insert it into your Raspberry Pi
